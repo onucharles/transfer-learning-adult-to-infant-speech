@@ -65,6 +65,13 @@ To pull this all together, you'd run:
 bazel run tensorflow/examples/speech_commands:train -- \
 --data_dir=my_wavs --wanted_words=up,down
 
+Typical command:
+python tensorflow/examples/speech_commands/train.py \
+--data_dir='/mnt/hdd/Datasets/speech-commands8k/' \
+--sample_rate=8000 \
+--summaries_dir='/mnt/hdd/Experiments/speech_commands_demo8k/logs/' \
+--train_dir='/mnt/hdd/Experiments/speech_commands_demo8k/checkpoints/'
+
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -311,7 +318,7 @@ if __name__ == '__main__':
       '--data_url',
       type=str,
       # pylint: disable=line-too-long
-      default='http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz',
+      default=None,
       # pylint: enable=line-too-long
       help='Location of speech training data archive on the web.')
   parser.add_argument(
