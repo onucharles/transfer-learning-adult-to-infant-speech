@@ -4,7 +4,7 @@ Prints relevant statistics about audio files in a corpus. Eg. sampling rates.
 
 python corpus_stats.py --source_dir=/mnt/hdd/Datasets/chillanto/
 """
-import os
+import os.path
 import argparse
 import soundfile as sf
 

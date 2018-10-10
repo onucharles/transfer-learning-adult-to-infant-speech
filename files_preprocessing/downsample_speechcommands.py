@@ -28,7 +28,7 @@ python downsample_speechcommands.py --source_dir='/mnt/hdd/Datasets/chillanto/' 
 
 """
 
-import os
+import os.path
 import argparse
 import librosa
 import soundfile as sf

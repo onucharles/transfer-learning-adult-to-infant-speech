@@ -144,16 +144,40 @@ def create_model(fingerprint_input, model_settings, model_architecture,
                     ' or "tiny_conv"')
 
 
-def load_variables_from_checkpoint(sess, start_checkpoint):
+def load_variables_from_checkpoint(sess, start_checkpoint, variables=None):
   """Utility function to centralize checkpoint restoration.
+  If variable_names are specified only those variables are restored from checkpoint.
 
   Args:
     sess: TensorFlow session.
     start_checkpoint: Path to saved checkpoint on disk.
   """
-  saver = tf.train.Saver(tf.global_variables())
+  if not variables:
+    saver = tf.train.Saver(tf.global_variables())
+  else:
+    saver = tf.train.Saver(variables)
   saver.restore(sess, start_checkpoint)
 
+def find_variables_by_name(variable_names_to_find):
+    """ Utility function to the specified variables in a session.
+
+    :param sess: TensorFlow session
+    :param variable_names: List of variable names.
+    :return:
+    """
+    trainable_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+
+    retrieved_variables = []
+    for var_name in variable_names_to_find:
+        found_var = False
+        for trainable_var in trainable_vars:
+            if trainable_var.name == var_name + ":0":
+                retrieved_variables.append(trainable_var)
+                found_var = True
+        if not found_var:
+            raise ValueError("Attempt to find variable '{0}' in graph failed. Invalid name".format(var_name))
+
+    return retrieved_variables
 
 def create_single_fc_model(fingerprint_input, model_settings, is_training):
   """Builds a model with a single hidden fully-connected layer.

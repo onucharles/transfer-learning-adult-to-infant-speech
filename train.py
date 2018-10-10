@@ -72,6 +72,30 @@ python tensorflow/examples/speech_commands/train.py \
 --summaries_dir='/mnt/hdd/Experiments/speech_commands_demo8k/logs/' \
 --train_dir='/mnt/hdd/Experiments/speech_commands_demo8k/checkpoints/'
 
+python train.py \
+--data_dir='/mnt/hdd/Datasets/speech-commands-8k-16bit/' \
+--sample_rate=8000 \
+--start_checkpoint=/mnt/hdd/Experiments/speech_commands_demo8k/checkpoints/conv.ckpt
+
+
+python train.py \
+--data_dir='/mnt/hdd/Datasets/chillanto-8k-16bit/' \
+--sample_rate=8000 \
+--summaries_dir='/mnt/hdd/Experiments/chillanto8k/logs/' \
+--train_dir='/mnt/hdd/Experiments/chillanto8k/checkpoints/' \
+--wanted_words='asphyxia,normal' \
+--start_checkpoint='/mnt/hdd/Experiments/speech_commands_demo8k/checkpoints/conv.ckpt-18000' \
+--testing_percentage=20 \
+--validation_percentage=10 \
+--silence_percentage=0.0 \
+--unknown_percentage=0.0 \
+--how_many_training_steps='400,100' \
+--eval_step_interval=50 \
+--batch_size=50 \
+--learning_rate='0.001,0.0001' \
+--variables_from_checkpoint='first_weights,first_bias,second_weights,second_bias' \
+--variables_to_update='final_fc_weights,final_fc_bias'
+
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -155,6 +179,13 @@ def main(_):
       FLAGS.model_architecture,
       is_training=True)
 
+  # Get variables to update to minimise loss (if specified)
+  if FLAGS.variables_to_update:
+      var_names_to_update = FLAGS.variables_to_update.split(',')
+      vars_to_update = models.find_variables_by_name(var_names_to_update)
+  else:
+      vars_to_update = None     # None means everything.
+
   # Define loss and optimizer
   ground_truth_input = tf.placeholder(
       tf.int64, [None], name='groundtruth_input')
@@ -176,7 +207,7 @@ def main(_):
     learning_rate_input = tf.placeholder(
         tf.float32, [], name='learning_rate_input')
     train_step = tf.train.GradientDescentOptimizer(
-        learning_rate_input).minimize(cross_entropy_mean)
+        learning_rate_input).minimize(cross_entropy_mean, var_list=vars_to_update)
   predicted_indices = tf.argmax(logits, 1)
   correct_prediction = tf.equal(predicted_indices, ground_truth_input)
   confusion_matrix = tf.confusion_matrix(
@@ -201,8 +232,12 @@ def main(_):
 
   start_step = 1
 
+  vars_to_init = None
   if FLAGS.start_checkpoint:
-    models.load_variables_from_checkpoint(sess, FLAGS.start_checkpoint)
+    if FLAGS.variables_from_checkpoint:     # Get variables to be initialised from checkpoint.
+      var_names_to_init = FLAGS.variables_from_checkpoint.split(',')
+      vars_to_init = models.find_variables_by_name(var_names_to_init)
+    models.load_variables_from_checkpoint(sess, FLAGS.start_checkpoint, vars_to_init)
     start_step = global_step.eval(session=sess)
 
   tf.logging.info('Training from step: %d ', start_step)
@@ -464,6 +499,20 @@ if __name__ == '__main__':
       type=str,
       default='mfcc',
       help='Spectrogram processing mode. Can be "mfcc" or "average"')
+
+  parser.add_argument(
+      '--variables_from_checkpoint',
+      type=str,
+      default='first_weights,first_bias,second_weights,second_bias',
+      help='Names of variables to load from specified checkpoint.'
+  )
+  parser.add_argument(
+      '--variables_to_update',
+      type=str,
+      default='final_fc_weights,final_fc_bias',
+      help='Names of variables to update when minimising loss.'
+  )
+
 
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
