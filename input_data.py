@@ -97,6 +97,10 @@ def which_set(filename, validation_percentage, testing_percentage):
   percentage_hash = ((int(hash_name_hashed, 16) %
                       (MAX_NUM_WAVS_PER_CLASS + 1)) *
                      (100.0 / MAX_NUM_WAVS_PER_CLASS))
+  # if percentage_hash < testing_percentage:
+  #   result = 'testing'
+  # elif percentage_hash < (testing_percentage + validation_percentage):
+  #   result = 'validation'
   if percentage_hash < validation_percentage:
     result = 'validation'
   elif percentage_hash < (testing_percentage + validation_percentage):

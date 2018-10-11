@@ -77,29 +77,41 @@ python train.py \
 --sample_rate=8000 \
 --start_checkpoint=/mnt/hdd/Experiments/speech_commands_demo8k/checkpoints/conv.ckpt
 
-
+------------Train from checkpoint, and updating only certain variables------------------
 python train.py \
 --data_dir='/mnt/hdd/Datasets/chillanto-8k-16bit/' \
 --sample_rate=8000 \
---summaries_dir='/mnt/hdd/Experiments/chillanto8k/logs/' \
---train_dir='/mnt/hdd/Experiments/chillanto8k/checkpoints/' \
+--summaries_dir='/mnt/hdd/Experiments/chillanto8k' \
 --wanted_words='asphyxia,normal' \
---start_checkpoint='/mnt/hdd/Experiments/speech_commands_demo8k/checkpoints/conv.ckpt-18000' \
+--start_checkpoint=/mnt/hdd/Experiments/speech_commands_demo8k/checkpoints/conv.ckpt \
 --testing_percentage=20 \
 --validation_percentage=10 \
 --silence_percentage=0.0 \
 --unknown_percentage=0.0 \
---how_many_training_steps='400,100' \
+--how_many_training_steps='1000,400' \
 --eval_step_interval=50 \
 --batch_size=50 \
 --learning_rate='0.001,0.0001' \
 --variables_from_checkpoint='first_weights,first_bias,second_weights,second_bias' \
 --variables_to_update='final_fc_weights,final_fc_bias'
 
-python train.py \
---data_dir='/mnt/hdd/Datasets/chillanto-8k-16bit/' \
+------- Training chillanto from scratch ---------
+CUDA_VISIBLE_DEVICES=1 python train.py \
+--data_dir='/mnt/hdd/Datasets/chillanto-8k-16bit-renamed/' \
 --sample_rate=8000 \
---output_dir='/mnt/hdd/Experiments/chillanto8k/'
+--output_dir='/mnt/hdd/Experiments/chillanto8k/' \
+--wanted_words='asphyxia,normal' \
+--start_checkpoint='' \
+--testing_percentage=40 \
+--validation_percentage=5 \
+--silence_percentage=0.0 \
+--unknown_percentage=0.0 \
+--how_many_training_steps='1000,400' \
+--eval_step_interval=50 \
+--batch_size=50 \
+--learning_rate='0.001,0.0001' \
+--variables_from_checkpoint='' \
+--variables_to_update=''
 
 """
 from __future__ import absolute_import
@@ -122,8 +134,10 @@ from utils.ioutils import current_datetime, save_json, create_folder
 FLAGS = None
 
 def prepare_experiment_directory():
+    """ Sets up folders where all experiment files will be saved to.
+    """
     # create unique sub-folder for this experiment
-    exp_dir = FLAGS.output_dir + current_datetime() + '/'
+    exp_dir = FLAGS.output_dir + '/' + current_datetime() + '/'
     create_folder(exp_dir)
     print('Experiment files will be saved to: ', exp_dir)
 
@@ -132,9 +146,26 @@ def prepare_experiment_directory():
     FLAGS.summaries_dir = exp_dir + 'summary_logs'
 
     # save parameters to json file
-    config_path = exp_dir + 'config.json'
+    config_path = exp_dir + 'parameters.json'
     save_json(vars(FLAGS), config_path)
     print('Saved experiment parameters to: ', config_path)
+
+def print_set_stats(audio_processor):
+    """Prints the distribution of training, validation and test sets across the classes
+    """
+    data_index = audio_processor.data_index
+    index_stats = {'validation': {}, 'testing': {}, 'training': {}}
+    for set_index in ['training', 'validation', 'testing']:
+        data_list = data_index[set_index]
+        for example in data_list:
+            cur_class = example['label']
+            if cur_class in index_stats[set_index]:
+                index_stats[set_index][cur_class] += 1
+            else:
+                index_stats[set_index][cur_class] = 1
+    tf.logging.info('Training set contains: %s', index_stats['training'])
+    tf.logging.info('Validation set contains: %s', index_stats['validation'])
+    tf.logging.info('Testing set contains: %s', index_stats['testing'])
 
 def main(_):
   prepare_experiment_directory()
@@ -157,6 +188,8 @@ def main(_):
       FLAGS.silence_percentage, FLAGS.unknown_percentage,
       FLAGS.wanted_words.split(','), FLAGS.validation_percentage,
       FLAGS.testing_percentage, model_settings, FLAGS.summaries_dir)
+  print_set_stats(audio_processor)
+
   fingerprint_size = model_settings['fingerprint_size']
   label_count = model_settings['label_count']
   time_shift_samples = int((FLAGS.time_shift_ms * FLAGS.sample_rate) / 1000)
