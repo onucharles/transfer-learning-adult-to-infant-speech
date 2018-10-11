@@ -96,6 +96,11 @@ python train.py \
 --variables_from_checkpoint='first_weights,first_bias,second_weights,second_bias' \
 --variables_to_update='final_fc_weights,final_fc_bias'
 
+python train.py \
+--data_dir='/mnt/hdd/Datasets/chillanto-8k-16bit/' \
+--sample_rate=8000 \
+--output_dir='/mnt/hdd/Experiments/chillanto8k/'
+
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -112,11 +117,28 @@ import tensorflow as tf
 import input_data
 import models
 from tensorflow.python.platform import gfile
+from utils.ioutils import current_datetime, save_json, create_folder
 
 FLAGS = None
 
+def prepare_experiment_directory():
+    # create unique sub-folder for this experiment
+    exp_dir = FLAGS.output_dir + current_datetime() + '/'
+    create_folder(exp_dir)
+    print('Experiment files will be saved to: ', exp_dir)
+
+    # define checkpoints and logs folders.
+    FLAGS.train_dir = exp_dir + 'train_checkpoints'
+    FLAGS.summaries_dir = exp_dir + 'summary_logs'
+
+    # save parameters to json file
+    config_path = exp_dir + 'config.json'
+    save_json(vars(FLAGS), config_path)
+    print('Saved experiment parameters to: ', config_path)
 
 def main(_):
+  prepare_experiment_directory()
+
   # We want to see all the logging messages for this tutorial.
   tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -322,6 +344,7 @@ def main(_):
       tf.logging.info('Saving to "%s-%d"', checkpoint_path, training_step)
       saver.save(sess, checkpoint_path, global_step=training_step)
 
+  # testing
   set_size = audio_processor.set_size('testing')
   tf.logging.info('set_size=%d', set_size)
   total_accuracy = 0
@@ -359,10 +382,9 @@ if __name__ == '__main__':
   parser.add_argument(
       '--data_dir',
       type=str,
-      default='/tmp/speech_dataset/',
-      help="""\
-      Where to download the speech training data to.
-      """)
+      default=None,
+      required=True,
+      help='Location of training data, if already downloaded. Else, where to download the speech training data to.')
   parser.add_argument(
       '--background_volume',
       type=float,
@@ -454,21 +476,27 @@ if __name__ == '__main__':
       type=int,
       default=100,
       help='How many items to train with at once',)
-  parser.add_argument(
-      '--summaries_dir',
-      type=str,
-      default='/tmp/retrain_logs',
-      help='Where to save summary logs for TensorBoard.')
+  # parser.add_argument(
+  #     '--summaries_dir',
+  #     type=str,
+  #     default='/tmp/retrain_logs',
+  #     help='Where to save summary logs for TensorBoard.')
   parser.add_argument(
       '--wanted_words',
       type=str,
       default='yes,no,up,down,left,right,on,off,stop,go',
       help='Words to use (others will be added to an unknown label)',)
+  # parser.add_argument(
+  #     '--train_dir',
+  #     type=str,
+  #     default='/tmp/speech_commands_train',
+  #     help='Directory to write event logs and checkpoint.')
   parser.add_argument(
-      '--train_dir',
+      '--output_dir',
       type=str,
-      default='/tmp/speech_commands_train',
-      help='Directory to write event logs and checkpoint.')
+      default=None,
+      required=True,
+      help='Directory to write experiment output eg summary logs, event logs and checkpoints.')
   parser.add_argument(
       '--save_step_interval',
       type=int,
