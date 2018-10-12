@@ -130,6 +130,7 @@ import input_data
 import models
 from tensorflow.python.platform import gfile
 from utils.ioutils import current_datetime, save_json, create_folder
+from visualisation import print_set_stats
 
 FLAGS = None
 
@@ -149,23 +150,6 @@ def prepare_experiment_directory():
     config_path = exp_dir + 'parameters.json'
     save_json(vars(FLAGS), config_path)
     print('Saved experiment parameters to: ', config_path)
-
-def print_set_stats(audio_processor):
-    """Prints the distribution of training, validation and test sets across the classes
-    """
-    data_index = audio_processor.data_index
-    index_stats = {'validation': {}, 'testing': {}, 'training': {}}
-    for set_index in ['training', 'validation', 'testing']:
-        data_list = data_index[set_index]
-        for example in data_list:
-            cur_class = example['label']
-            if cur_class in index_stats[set_index]:
-                index_stats[set_index][cur_class] += 1
-            else:
-                index_stats[set_index][cur_class] = 1
-    tf.logging.info('Training set contains: %s', index_stats['training'])
-    tf.logging.info('Validation set contains: %s', index_stats['validation'])
-    tf.logging.info('Testing set contains: %s', index_stats['testing'])
 
 def main(_):
   prepare_experiment_directory()
@@ -560,7 +544,6 @@ if __name__ == '__main__':
       type=str,
       default='mfcc',
       help='Spectrogram processing mode. Can be "mfcc" or "average"')
-
   parser.add_argument(
       '--variables_from_checkpoint',
       type=str,
@@ -573,7 +556,6 @@ if __name__ == '__main__':
       default='final_fc_weights,final_fc_bias',
       help='Names of variables to update when minimising loss.'
   )
-
 
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
