@@ -122,13 +122,13 @@ import argparse
 import os.path
 import sys
 
-import numpy as np
-from six.moves import xrange  # pylint: disable=redefined-builtin
-import tensorflow as tf
-
 import input_data
-import models
+import numpy as np
+import tensorflow as tf
+from six.moves import xrange  # pylint: disable=redefined-builtin
 from tensorflow.python.platform import gfile
+
+from baseline import models
 from utils.ioutils import current_datetime, save_json, create_folder
 from visualisation import print_set_stats
 

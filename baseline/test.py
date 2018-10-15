@@ -6,13 +6,16 @@ python test.py \
 --model_parameters='/mnt/hdd/Experiments/chillanto8k/20181011-082349/parameters.json'
 
 """
-import models
+import argparse
+
 import input_data
-from visualisation import print_set_stats
 import tensorflow as tf
 from six.moves import xrange  # pylint: disable=redefined-builtin
-import argparse
+
+from baseline import models
 from utils.ioutils import load_json
+from visualisation import print_set_stats
+
 
 def parse_input():
     parser = argparse.ArgumentParser()
@@ -46,8 +49,6 @@ def load_flags(json_path):
 
 def main():
     FLAGS, MODEL_FLAGS = parse_input()
-    # print("FLAGS are: ", FLAGS)
-    # print("MODEL FLAGS are: ", MODEL_FLAGS)
 
     tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -88,29 +89,37 @@ def main():
         ground_truth_input, predicted_indices, num_classes=label_count)
     accuracy_step = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-    tf.global_variables_initializer().run()
 
-    tf.logging.info('got here')
+    recall_step, recall_op = tf.metrics.recall(ground_truth_input, predicted_indices)
+    precision_step, precision_op = tf.metrics.precision(ground_truth_input, predicted_indices)
+
+    # TP = tf.count_nonzero(predicted_indices * ground_truth_input, dtype=tf.float32)
+    # TN = tf.count_nonzero((predicted_indices - 1) * (ground_truth_input - 1), dtype=tf.float32)
+    # FP = tf.count_nonzero(predicted_indices * (ground_truth_input - 1), dtype=tf.float32)
+    # FN = tf.count_nonzero((predicted_indices - 1) * ground_truth_input, dtype=tf.float32)
+    # precision_step = TP / (TP + FP)
+    # recall_step = TP / (TP + FN)
+    # f1 = 2 * precision_step * recall_step / (precision_step + recall_step)
+
+    tf.global_variables_initializer().run()
+    tf.local_variables_initializer().run()  # we need this because precision and recall have local variables.
 
     # load checkpoint
     if FLAGS.model_checkpoint:
         models.load_variables_from_checkpoint(sess, FLAGS.model_checkpoint)
-
-    # Confirm that variables at correct step were loaded.
-    global_step = tf.train.get_global_step()
-    start_step = global_step.eval(session=sess)
-    tf.logging.info('Testing with model at step: %d ', start_step)
 
     # testing
     set_size = audio_processor.set_size('testing')
     tf.logging.info('set_size=%d', set_size)
     total_accuracy = 0
     total_conf_matrix = None
+    total_precision = 0
+    total_recall = 0
     for i in xrange(0, set_size, MODEL_FLAGS.batch_size):
         test_fingerprints, test_ground_truth = audio_processor.get_data(
             MODEL_FLAGS.batch_size, i, model_settings, 0.0, 0.0, 0, 'testing', sess)
-        test_accuracy, conf_matrix = sess.run(
-            [accuracy_step, confusion_matrix],
+        test_accuracy, conf_matrix, test_precision, test_recall = sess.run(
+            [accuracy_step, confusion_matrix, precision_step, recall_step],
             feed_dict={
                 fingerprint_input: test_fingerprints,
                 ground_truth_input: test_ground_truth,
@@ -118,6 +127,8 @@ def main():
             })
         batch_size = min(MODEL_FLAGS.batch_size, set_size - i)
         total_accuracy += (test_accuracy * batch_size) / set_size
+        total_precision += (test_precision * batch_size) / set_size
+        test_recall += (test_recall * batch_size) / set_size
         if total_conf_matrix is None:
             total_conf_matrix = conf_matrix
         else:
@@ -125,8 +136,14 @@ def main():
     tf.logging.info('Confusion Matrix:\n %s' % (total_conf_matrix))
     tf.logging.info('Final test accuracy = %.1f%% (N=%d)' % (total_accuracy * 100,
                                                              set_size))
+    tf.logging.info('Final test precision = %.1f%% (N=%d)' % (total_precision * 100,
+                                                             set_size))
+    tf.logging.info('Final test recall = %.1f%% (N=%d)' % (total_recall * 100,
+                                                             set_size))
 
     # TODO add precision, recall and specificity (and F1?)
+    # need to add these to the graph, so that we can optimise for each as we wish.
+    # problem is the tf.precision function which class does it use?
 
 if __name__=='__main__':
     main()
