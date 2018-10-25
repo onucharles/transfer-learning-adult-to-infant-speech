@@ -23,8 +23,8 @@ Destination will be organised as (where wav files have new sampling rate):
         -> ggg.wav
 
 Script:
-python downsample_wav_files.py --source_dir='/mnt/hdd/Datasets/chillanto/' \
---destination_dir='/mnt/hdd/Datasets/chillanto-8k-16bit/' --resample_rate=8000
+python wav_handling/downsample_wav_files.py --source_dir='/mnt/hdd/Datasets/chill_deaf/' \
+--destination_dir='/mnt/hdd/Datasets/chill_deaf8k/' --resample_rate=8000
 
 """
 

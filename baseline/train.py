@@ -78,12 +78,12 @@ python train.py \
 --start_checkpoint=/mnt/hdd/Experiments/speech_commands_demo8k/checkpoints/conv.ckpt
 
 ------------Train from checkpoint, and updating only certain variables------------------
-python train.py \
---data_dir='/mnt/hdd/Datasets/chillanto-8k-16bit/' \
+python baseline/train.py \
+--data_dir='/mnt/hdd/Datasets/chillanto-8k-16bit' \
 --sample_rate=8000 \
---summaries_dir='/mnt/hdd/Experiments/chillanto8k' \
+--output_dir='/mnt/hdd/Experiments/chillanto-tf' \
 --wanted_words='asphyxia,normal' \
---start_checkpoint=/mnt/hdd/Experiments/speech_commands_demo8k/checkpoints/conv.ckpt \
+--start_checkpoint=/mnt/hdd/Experiments/old/speech_commands_demo8k/checkpoints/conv.ckpt-18000 \
 --testing_percentage=20 \
 --validation_percentage=10 \
 --silence_percentage=0.0 \
@@ -93,17 +93,17 @@ python train.py \
 --batch_size=50 \
 --learning_rate='0.001,0.0001' \
 --variables_from_checkpoint='first_weights,first_bias,second_weights,second_bias' \
---variables_to_update='final_fc_weights,final_fc_bias'
+--variables_to_update='first_weights,first_bias,second_weights,second_bias,final_fc_weights,final_fc_bias'
 
 ------- Training chillanto from scratch ---------
-CUDA_VISIBLE_DEVICES=1 python train.py \
---data_dir='/mnt/hdd/Datasets/chillanto-8k-16bit-renamed/' \
+CUDA_VISIBLE_DEVICES=1 python baseline/train.py \
+--data_dir='/mnt/hdd/Datasets/chillanto-8k-16bit/' \
 --sample_rate=8000 \
---output_dir='/mnt/hdd/Experiments/chillanto8k/' \
+--output_dir='/mnt/hdd/Experiments/chillanto-tf/' \
 --wanted_words='asphyxia,normal' \
 --start_checkpoint='' \
---testing_percentage=40 \
---validation_percentage=5 \
+--testing_percentage=20 \
+--validation_percentage=10 \
 --silence_percentage=0.0 \
 --unknown_percentage=0.0 \
 --how_many_training_steps='1000,400' \
@@ -121,6 +121,7 @@ from __future__ import print_function
 import argparse
 import os.path
 import sys
+sys.path.insert(0, '/home/ml/c.onu/Documents/ml_projects/ubenwa-transfer-learning')
 
 import input_data
 import numpy as np
@@ -128,9 +129,9 @@ import tensorflow as tf
 from six.moves import xrange  # pylint: disable=redefined-builtin
 from tensorflow.python.platform import gfile
 
-from baseline import models
+import models
 from utils.ioutils import current_datetime, save_json, create_folder
-from visualisation import print_set_stats
+from baseline.visualisation import print_set_stats
 
 FLAGS = None
 

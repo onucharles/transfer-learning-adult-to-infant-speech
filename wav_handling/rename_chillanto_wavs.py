@@ -6,9 +6,9 @@ In this example, "0021" is the patient id while "003004" is the sample id.
 Chillanto format: 0021003004
 Destination format: 003004_nohash_0021
 
-python files_preprocessing/rename_chillanto_wavs.py \
---source_dir=/mnt/hdd/Datasets/chillanto-8k-16bit \
---destination_dir=/mnt/hdd/Datasets/chillanto-8k-16bit-renamed \
+python wav_handling/rename_chillanto_wavs.py \
+--source_dir=/mnt/hdd/Datasets/chill_deaf8k \
+--destination_dir=/mnt/hdd/Datasets/chill_deaf8k_renamed \
 
 """
 import sys

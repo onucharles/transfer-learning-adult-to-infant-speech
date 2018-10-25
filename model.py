@@ -108,6 +108,7 @@ class SpeechResModel(SerializableModule):
     def __init__(self, config):
         super().__init__()
         n_labels = config["n_labels"]
+        print("no of labels in model is: ", n_labels)
         n_maps = config["n_feature_maps"]
         self.conv0 = nn.Conv2d(1, n_maps, (3, 3), padding=(1, 1), bias=False)
         if "res_pool" in config:
@@ -165,7 +166,7 @@ class SpeechModel(SerializableModule):
             self.conv1.bias.data.zero_()
         self.pool1 = nn.MaxPool2d(conv1_pool)
 
-        x = Variable(torch.zeros(1, 1, height, width), volatile=True)
+        x = Variable(torch.zeros(1, 1, height, width))#, volatile=True)
         x = self.pool1(self.conv1(x))
         conv_net_size = x.view(1, -1).size(1)
         last_size = conv_net_size
@@ -257,6 +258,9 @@ class SpeechDataset(data.Dataset):
         self._file_cache = SimpleCache(config["cache_size"])
         n_unk = len(list(filter(lambda x: x == 1, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
+        self.sampling_freq = config["sampling_freq"]
+        self.window_size_ms = config["window_size_ms"]
+        self.frame_shift_ms = config["frame_shift_ms"]
 
     @staticmethod
     def default_config():
@@ -264,20 +268,23 @@ class SpeechDataset(data.Dataset):
         config["group_speakers_by_id"] = True
         config["silence_prob"] = 0.1
         config["noise_prob"] = 0.8
-        config["n_dct_filters"] = 40
-        config["input_length"] = 8000
-        config["n_mels"] = 40
+        config["input_length"] = 16000
         config["timeshift_ms"] = 100
         config["unknown_prob"] = 0.1
-        config["train_pct"] = 55        # TODO redundant. perhaps remove.
-        config["dev_pct"] = 5
-        config["test_pct"] = 40
+        config["train_pct"] = 80
+        config["dev_pct"] = 10
+        config["test_pct"] = 10
         config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
-        config["data_folder"] = "/mnt/hdd/Datasets/speech-commands-8k-16bit"
+        config["data_folder"] = ""#""/mnt/hdd/Datasets/speech-commands-8k-16bit"
+        config["sampling_freq"] = 16000
+        config["n_dct_filters"] = 40
+        config["n_mels"] = 40
+        config["window_size_ms"] = 30
+        config["frame_shift_ms"] = 10
         return config
 
     def _timeshift_audio(self, data):
-        shift = (16000 * self.timeshift_ms) // 1000
+        shift = (self.sampling_freq * self.timeshift_ms) // 1000
         shift = random.randint(-shift, shift)
         a = -min(0, shift)
         b = max(0, shift)
@@ -304,7 +311,7 @@ class SpeechDataset(data.Dataset):
             data = np.zeros(in_len, dtype=np.float32)
         else:
             file_data = self._file_cache.get(example)
-            data = librosa.core.load(example, sr=in_len)[0] if file_data is None else file_data
+            data = librosa.core.load(example, sr=self.sampling_freq)[0] if file_data is None else file_data
             self._file_cache[example] = data
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
         if self.set_type == DatasetType.TRAIN:
@@ -313,7 +320,9 @@ class SpeechDataset(data.Dataset):
         if random.random() < self.noise_prob or silence:
             a = random.random() * 0.1
             data = np.clip(a * bg_noise + data, -1, 1)
-        data = torch.from_numpy(preprocess_audio(data, self.n_mels, self.filters))
+        data = torch.from_numpy(
+            preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
+        )
         self._audio_cache[example] = data
         return data
 
@@ -376,6 +385,7 @@ class SpeechDataset(data.Dataset):
             dataset.update(unk_dict)
             a = b
 
+        print("labels are: ", words)
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
         datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg), cls(sets[1], DatasetType.DEV, test_cfg),
