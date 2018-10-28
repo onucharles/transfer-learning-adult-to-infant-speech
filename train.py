@@ -48,7 +48,7 @@ python train.py \
 Chillanto sample script:
 python train.py \
 --data_folder /mnt/hdd/Datasets/chillanto-8k-16bit-renamed \
---output_folder /mnt/hdd/Experiments/chillanto \
+--output_folder /mnt/hdd/Experiments/chillanto-pt \
 --input_length 8000 \
 --wanted_words normal asphyxia \
 --n_labels 4 \
@@ -68,8 +68,10 @@ python train.py \
 --timeshift_ms 100 \
 --compute_f1 true \
 --gpu_no 1 \
---input_file /mnt/hdd/Experiments/speech-commands-pytorch/20181022-160051/model.pt \
+--input_file /mnt/hdd/Experiments/chillanto-pt/20181025-114623/model.pt \
+--no_cuda true
 
+--input_file /mnt/hdd/Experiments/speech-commands-pytorch/20181022-160051/model.pt \
 """
 
 from collections import ChainMap
@@ -90,33 +92,7 @@ from utils import evalutils
 from sklearn import metrics
 from tensorboardX import SummaryWriter
 from sklearn.externals import joblib
-
-class ConfigBuilder(object):
-    def __init__(self, *default_configs):
-        self.default_config = ChainMap(*default_configs)
-
-    def build_argparse(self):
-        """ Add list of known arguments to parser"""
-        parser = argparse.ArgumentParser()
-        for key, value in self.default_config.items():
-            key = "--{}".format(key)
-            if isinstance(value, tuple):
-                parser.add_argument(key, default=list(value), nargs=len(value), type=type(value[0]))
-            elif isinstance(value, list):
-                parser.add_argument(key, default=value, nargs="+", type=type(value[0]))
-            elif isinstance(value, bool) and not value:
-                parser.add_argument(key, action="store_true")
-            else:
-                parser.add_argument(key, default=value, type=type(value))
-        return parser
-
-    def config_from_argparse(self, parser=None):
-        """ Parse list of supplied arguments by user, and return dict of parameters."""
-        if not parser:
-            parser = self.build_argparse()
-        args = vars(parser.parse_known_args()[0])
-        return ChainMap(args, self.default_config)
-
+from ConfigBuilder import ConfigBuilder
 
 def prepare_experiment_directory(config):
     """ Sets up folders where all experiment files will be saved to.
@@ -362,6 +338,42 @@ def train(config):
     # Test model
     evaluate(config, model, test_loader)
 
+def save_embeddings(config, model=None, test_loader=None):
+    n_labels = config["n_labels"]
+    classes = np.arange(n_labels)
+    if not test_loader:
+        _, _, test_set = mod.SpeechDataset.splits(config)
+        test_loader = data.DataLoader(test_set, batch_size=min(len(test_set), 1))
+    if not config["no_cuda"]:
+        torch.cuda.set_device(config["gpu_no"])
+    if not model:
+        model = config["model_class"](config)
+        load_weights(model, config['input_file'], config['params_to_load'])
+    if not config["no_cuda"]:
+        torch.cuda.set_device(config["gpu_no"])
+        model.cuda()
+    model.eval()
+
+    embeddings_list = []
+    labels_list = []
+    for model_in, labels in test_loader:
+        model_in = Variable(model_in, requires_grad=False)
+        if not config["no_cuda"]:
+            model_in = model_in.cuda()
+            labels = labels.cuda()
+        labels = Variable(labels, requires_grad=False).numpy()
+        embedding = model.get_embedding(model_in).detach().numpy().flatten()
+        embeddings_list.append(embedding)
+        labels_list.append(int(labels))
+
+        # print('embedding dim {0} and labels dim {1}'.format(embedding.shape, labels.shape))
+
+    embeddings = np.array(embeddings_list)
+    labels = np.array(labels_list)
+    print('embedding shape is {0} and labels shape is {1}'.format(embeddings.shape, labels.shape))
+    joblib.dump((embeddings, labels), '/mnt/hdd/Dropbox (NRP)/paper/tsne_data/output_embeddings_transfer.pkl')
+
+
 def main():
     # output_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "model", "model.pt")
     parser = argparse.ArgumentParser()
@@ -389,7 +401,7 @@ def main():
         mod.SpeechDataset.default_config(),
         global_config)
     parser = builder.build_argparse()
-    parser.add_argument("--mode", choices=["train", "eval"], default="train", type=str)
+    parser.add_argument("--mode", choices=["train", "eval", "save_embedding"], default="save_embedding", type=str)
     config = builder.config_from_argparse(parser)
 
     # Prepare experiment directory, save config to file.
@@ -406,6 +418,9 @@ def main():
     elif config["mode"] == "eval":
         print("Running in evaluation mode...")
         evaluate(config)
+    elif config["mode"] == "save_embedding":
+        print("Running in save embedding mode...")
+        save_embeddings(config)
 
 if __name__ == "__main__":
     main()

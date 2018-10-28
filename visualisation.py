@@ -5,6 +5,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import argparse
 
+
 FLAGS = None
 
 def plot_learning_curve(train_log, valid_log, save_fig_path=None):
@@ -23,7 +24,7 @@ def plot_learning_curve(train_log, valid_log, save_fig_path=None):
     plt.plot(train_log[:,0], train_log[:,2], label='training')
     plt.plot(valid_log[:,0], valid_log[:,2], label='validation')
     plt.xlabel('no of training steps')
-    plt.ylabel('cross-entropy loss')
+    plt.ylabel('loss')
     plt.legend()
 
     if save_fig_path:

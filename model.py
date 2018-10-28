@@ -146,6 +146,26 @@ class SpeechResModel(SerializableModule):
         x = torch.mean(x, 2)
         return self.output(x)
 
+    def get_embedding(self, x):
+        x = x.unsqueeze(1)
+        for i in range(self.n_layers + 1):
+            y = F.relu(getattr(self, "conv{}".format(i))(x))
+            if i == 0:
+                if hasattr(self, "pool"):
+                    y = self.pool(y)
+                old_x = y
+            if i > 0 and i % 2 == 0:
+                x = y + old_x
+                old_x = x
+            else:
+                x = y
+            if i > 0:
+                x = getattr(self, "bn{}".format(i))(x)
+        x = x.view(x.size(0), x.size(1), -1)  # shape: (batch, feats, o3)
+        x = torch.mean(x, 2)
+        return x
+
+
 class SpeechModel(SerializableModule):
     def __init__(self, config):
         super().__init__()
@@ -391,6 +411,25 @@ class SpeechDataset(data.Dataset):
         datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg), cls(sets[1], DatasetType.DEV, test_cfg),
                 cls(sets[2], DatasetType.TEST, test_cfg))
         return datasets
+
+    @staticmethod
+    def convert_dataset(data_set):
+        """
+        Converts a model.SpeechDataset object into a plain data array and label vector
+        :param data_set:
+        :return:
+        """
+        data = []
+        labels = []
+        for i in range(len(data_set)):
+            mfcc_img, class_label = data_set[i]
+            data.append(mfcc_img.numpy().flatten())
+            labels.append(class_label)
+
+        data = np.array(data)
+        labels = np.array(labels)
+        print('data converted to array of: {0}. and labels: {1}'.format(data.shape, labels.shape))
+        return data, labels
 
     def __getitem__(self, index):
         if index >= len(self.audio_labels):
