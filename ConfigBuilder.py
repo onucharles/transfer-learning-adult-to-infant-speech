@@ -1,3 +1,7 @@
+"""
+ConfigBuilder is used by all "train..." scripts to chain and parse configuration parameters.
+"""
+
 from collections import ChainMap
 import argparse
 

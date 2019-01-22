@@ -1,3 +1,4 @@
+# configuration parameters for classical models
 
 c_parameters = {
         'mode': 'model_selection',   # 'train_eval'

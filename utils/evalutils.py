@@ -1,3 +1,6 @@
+"""
+Utility functions related to evaluation metrics.
+"""
 
 def read_conf_matrix(cm, pos_class):
     """ Calculates confusion matrix and returns true and false positives and negatives based on the

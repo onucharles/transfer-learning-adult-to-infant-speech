@@ -1,1 +1,2 @@
-Tensorflow code for baselines
+Tensorflow code for baselines.
+Currently not in use.
