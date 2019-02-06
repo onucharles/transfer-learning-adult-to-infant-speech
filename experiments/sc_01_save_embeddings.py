@@ -6,11 +6,11 @@ Task: Save speech embeddings
 
 """
 
-from lib.settings import SPEECH_COMMANDS_OUTPUT_FOLDER, MODEL_CLASS
-from lib.comet_logger import CometLogger
+from src.settings import SPEECH_COMMANDS_OUTPUT_FOLDER, MODEL_CLASS
+from src.comet_logger import CometLogger
 from pathlib import Path
-from lib.model import find_model
-from lib.speech_commands_dataset import SpeechCommandsDataset
+from src.model import find_model
+from src.speech_commands_dataset import SpeechCommandsDataset
 import numpy as np
 import torch.utils.data as data
 import torch

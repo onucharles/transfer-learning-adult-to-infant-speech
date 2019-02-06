@@ -4,11 +4,11 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 
-from lib.settings import MODEL_CLASS, SPEECH_COMMANDS_OUTPUT_FOLDER, SPEECH_COMMANDS_LOGGING_FOLDER, SPEECH_COMMANDS_MODELS_FOLDER
-from lib.comet_logger import CometLogger
+from src.settings import MODEL_CLASS, SPEECH_COMMANDS_OUTPUT_FOLDER, SPEECH_COMMANDS_LOGGING_FOLDER, SPEECH_COMMANDS_MODELS_FOLDER
+from src.comet_logger import CometLogger
 from pathlib import Path
-from lib.model import find_model
-from lib.speech_commands_dataset import SpeechCommandsDataset
+from src.model import find_model
+from src.speech_commands_dataset import SpeechCommandsDataset
 import numpy as np
 import torch.utils.data as data
 import torch
@@ -16,7 +16,7 @@ from torch import tensor
 
 from sklearn.externals import joblib
 from collections import ChainMap, Counter
-from lib.training_helpers import print_eval, set_seed, get_loss_fxn, get_sampler, evaluate, compute_eval, confusion_matrix, print_test_eval
+from src.training_helpers import print_eval, set_seed, get_loss_fxn, get_sampler, evaluate, compute_eval, confusion_matrix, print_test_eval
 
 
 def build_optimizer(model, config, lr):
@@ -24,6 +24,7 @@ def build_optimizer(model, config, lr):
 
 def train(config):
 
+    set_seed(config)
     logger = CometLogger(project='sc02_train')
     experiment = logger.experiment()
     ds_config = SpeechCommandsDataset.default_config({ })
@@ -38,11 +39,7 @@ def train(config):
     print("test set", len(test_set))
 
 
-    #summary_writer = SummaryWriter(config['logs_dir'])
-    # print('Logs will be written to: ', config['logs_dir'])
-
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
     model = find_model(MODEL_CLASS)
     model.to(device)
     optimizers = [ build_optimizer(model, config, lr) for lr in config['lr'] ]
@@ -81,6 +78,8 @@ def train(config):
             train_score = compute_eval(scores, labels)
             print_eval("train step #{0} {1}".format(step_no, "accuracy"), train_score, loss, optimizer.defaults['lr'])
             train_logs.append((step_no, train_score.item(), loss.item()))
+            experiment.log_metric('train_loss', loss.item())
+            experiment.log_metric('lr', optimizer.defaults['lr'])
 
         if epoch_idx % config["dev_every"] == config["dev_every"] - 1:
             model.eval()
@@ -97,6 +96,8 @@ def train(config):
             avg_acc = np.mean(accs)
             print_test_eval("Validation", avg_acc, conf_mat, config['compute_f1'])
             valid_logs.append((step_no, avg_acc, loss.item()))
+            experiment.log_metric('dev_loss', loss.item())
+            experiment.log_metric('avg_acc', avg_acc)
 
             # save best model
             if avg_acc > max_acc:
@@ -109,7 +110,7 @@ def train(config):
     print('Training logs were written to: ', log_file_path)
 
     # Test model
-    predictions = evaluate(config, model, device, test_loader)
+    predictions = evaluate(n_labels, config['compute_f1'],  model, device, test_loader)
     joblib.dump(predictions, SPEECH_COMMANDS_LOGGING_FOLDER / 'predictions.pkl')
 
 def train_model():
@@ -125,6 +126,6 @@ def train_model():
         'weight_decay': False,
         'momentum': False,
         'compute_f1': True,
+        'seed': 1,
     }
-
     train(config)
