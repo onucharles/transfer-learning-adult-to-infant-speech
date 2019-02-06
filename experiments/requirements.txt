@@ -1,0 +1,11 @@
+numpy
+scipy
+pandas
+torch
+torchvision
+tensorboardX
+fire
+matplotlib
+tensorflow
+tensorboard
+comet_ml
