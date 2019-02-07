@@ -45,7 +45,7 @@ def build_data_loaders(config):
     return train, dev, test
 
 def setup_and_run_training(config):
-    logger = CometLogger(project='speech_commands_train')
+    logger = CometLogger(project='speech_commands_train_and_evaluate')
     experiment = logger.experiment()
     train_loader, dev_loader, test_loader = build_data_loaders(config)
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -59,12 +59,12 @@ def setup_and_run_training(config):
         'loaders': (train_loader, dev_loader, test_loader)
     }
 
-def train_model():
+def train_and_evaluate():
     train_config = {
         'n_epochs': 1,
         'lr': [0.1, 0.01, 0.001],
         'schedule': [0, 3000, 6000],
-        'batch_size': 256, # 64
+        'batch_size': 64,
         'weight_decay': 0.00001,
         'model_path': SPEECH_COMMANDS_MODELS_FOLDER / 'latest.mdl',
         'log_file_path': SPEECH_COMMANDS_LOGGING_FOLDER /  'logs.pkl',
