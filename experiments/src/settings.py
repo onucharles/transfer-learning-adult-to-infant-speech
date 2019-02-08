@@ -1,14 +1,25 @@
 from pathlib import Path
 
+MODEL_CLASS = 'res8'
 
-MODEL_CLASS='res8'
-
-
+# root folder
 DATA_FOLDER = Path('/').parent / 'network' / 'data1' / 'maloneyj'
-SPEECH_COMMANDS_DATA_FOLDER = DATA_FOLDER / 'dataset_speech_commands'
-SPEECH_COMMANDS_OUTPUT_FOLDER = DATA_FOLDER / 'dataset_speech_output'
-SPEECH_COMMANDS_LOGGING_FOLDER = DATA_FOLDER / 'logs' / 'speech_commands'
-SPEECH_COMMANDS_MODELS_FOLDER = DATA_FOLDER / 'models' / 'speech_commands'
 
+# Speech Commands paths
+SPEECH_COMMANDS = 'speech_commands'
+SPEECH_COMMANDS_DATA_FOLDER = DATA_FOLDER / 'dataset' / SPEECH_COMMANDS
+SPEECH_COMMANDS_LOGGING_FOLDER = DATA_FOLDER / 'logs' / SPEECH_COMMANDS
+SPEECH_COMMANDS_MODELS_FOLDER = DATA_FOLDER / 'models' / SPEECH_COMMANDS
+SPEECH_COMMANDS_EMBEDDINGS_FOLDER = DATA_FOLDER / 'embeddings' / SPEECH_COMMANDS
+
+# Vox Celeb1 paths
+VOX = 'voxceleb1'
+VOX_DATA_FOLDER = DATA_FOLDER / 'dataset' / VOX
+VOX_LOGGING_FOLDER = DATA_FOLDER / 'logs' / VOX
+VOX_MODELS_FOLDER = DATA_FOLDER / 'models' / VOX
+VOX_EMBEDDINGS_FOLDER = DATA_FOLDER / 'embeddings' / VOX
+
+
+# 3rd party integrations
 COMET_API_KEY = 'bSyRm6vJpAwfehizXic7Fo0bY'
 COMET_WORKSPACE = 'jlebensold'

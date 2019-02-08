@@ -17,17 +17,16 @@ import torch.utils.data as data
 
 from .manage_audio import preprocess_audio
 from .simple_cache import SimpleCache
-from .settings import SPEECH_COMMANDS_DATA_FOLDER
 
 class DatasetType(Enum):
     TRAIN = 0
     DEV = 1
     TEST = 2
 
-
 class SpeechCommandsDataset(data.Dataset):
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
+
     def __init__(self, data, set_type, config):
         super().__init__()
         self.audio_files = list(data.keys())
@@ -54,6 +53,8 @@ class SpeechCommandsDataset(data.Dataset):
 
     @staticmethod
     def default_config(custom_config={}):
+        """ NOTE: you must provide a `data_folder` """
+
         config = {}
         config["group_speakers_by_id"] = True
         config["silence_prob"] = 0.1
@@ -65,15 +66,15 @@ class SpeechCommandsDataset(data.Dataset):
         config["cache_size"] =32768
         config["dev_pct"] = 10
         config["test_pct"] = 10
-        config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
-        config["data_folder"] = SPEECH_COMMANDS_DATA_FOLDER
         config["sampling_freq"] = 8000
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
         # add Unknown and Silence
+        config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
         config["n_labels"] = len(config["wanted_words"]) + 2
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
+
         return dict(ChainMap(custom_config, config))
 
     def _timeshift_audio(self, data):
@@ -112,6 +113,7 @@ class SpeechCommandsDataset(data.Dataset):
 
         if random.random() < self.noise_prob or silence:
             a = random.random() * 0.1
+            print(np.shape(data))
             data = np.clip(a * bg_noise + data, -1, 1)
         data = torch.from_numpy(
             preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)

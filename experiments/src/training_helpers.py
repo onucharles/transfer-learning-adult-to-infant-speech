@@ -5,8 +5,11 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 
+from .comet_logger import CometLogger
 from .utils import evalutils
+from .model import find_model
 
+from collections import ChainMap
 import random
 
 from sklearn import metrics
@@ -31,7 +34,7 @@ def print_eval(name, eval_score, loss, lr,  end="\n"):
 def print_f1_confusion_matrix(name, avg_acc, conf_mat):
     tp, tn, fp, fn, p, n = evalutils.read_conf_matrix(conf_mat, pos_class=3)
     f1, precision, recall = evalutils.f1_prec_recall(tp, tn, fp, fn, p, n)
-    print("Confusion matrix: {}".format(conf_mat))
+    print("Confusion matrix: \n {}".format(conf_mat))
     print("{} accuracy: {}\tF1 = {}\tPrecision={}\tRecall={}".format(name, avg_acc, f1, precision, recall))
 
 
@@ -44,12 +47,9 @@ def set_seed(config):
     torch.backends.cudnn.deterministic = True
 
 
-
 # TODO: log experiment results
 def evaluate(n_labels, model, device, test_loader):
     classes = np.arange(n_labels)
-#    model.to(device)
-#    model.eval()
     criterion = nn.CrossEntropyLoss()
     results = []
     total = 0

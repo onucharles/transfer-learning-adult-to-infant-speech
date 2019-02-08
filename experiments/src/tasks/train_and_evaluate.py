@@ -1,15 +1,57 @@
+from collections import ChainMap
 import numpy as np
 import torch
 import torch.nn as nn
 import torch
+from src.comet_logger import CometLogger
 from sklearn.externals import joblib
 from src.training_helpers import print_eval, set_seed, evaluate, compute_eval, confusion_matrix, print_f1_confusion_matrix
+from src.settings import MODEL_CLASS
+from src.model import find_model
 
+def task_config(custom_config={}):
+    """ Reasonable defaults for the training task """
+    default_config = {
+        'n_epochs': 100,
+        'lr': [0.1, 0.01, 0.001],
+        'schedule': [0, 3000, 6000],
+        'batch_size': 64,
+        'weight_decay': 0.00001,
+        'dev_every': 1,
+        'use_nesterov': False,
+        'weight_decay': False,
+        'momentum': False,
+        'seed': 1,
+        'model_class': MODEL_CLASS
+    }
+    return dict(ChainMap(custom_config, default_config))
+
+def setup_task(config, data_loaders, n_labels):
+    """ returns all the objects (including data loaders) for training """
+    logger = CometLogger(project=config['project'])
+    experiment = logger.experiment()
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model = find_model(config['model_class'], n_labels)
+    return {
+        'experiment': experiment,
+        'model': model,
+        'device': device,
+        'config': config,
+        'loaders': data_loaders
+    }
 
 def build_optimizer(model, config, lr):
     return torch.optim.SGD(model.parameters(), lr=lr, nesterov=config["use_nesterov"], weight_decay=config["weight_decay"], momentum=config["momentum"])
 
 def task_train_and_evaluate(task_params):
+    """
+    Task details:
+        - Performs a training and evaluation loop.
+        - Evaluates model performance using F1 and Confusion Matrix
+        - Logs results to comet experiment
+        - Outputs the best model candidate
+    """
+
     experiment = task_params['experiment']
     config = task_params['config']
     train_loader, dev_loader, test_loader = task_params['loaders']
@@ -18,6 +60,7 @@ def task_train_and_evaluate(task_params):
 
     set_seed(config)
     model.to(device)
+    model = torch.nn.DataParallel(model)
     optimizers = [ build_optimizer(model, config, lr) for lr in config['lr'] ]
     optimizers.reverse()
 
