@@ -38,8 +38,10 @@ import torch.utils.data as data
 
 from .serializable_module import SerializableModule
 
-def find_model(conf):
-    return SpeechResModel(find_config(conf))
+def find_model(conf, n_labels):
+    config = find_config(conf)
+    config["n_labels"] = n_labels
+    return SpeechResModel(config)
 
 def find_config(conf):
     if isinstance(conf, ConfigType):
