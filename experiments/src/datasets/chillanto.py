@@ -17,12 +17,14 @@ import torch.utils.data as data
 
 from .manage_audio import preprocess_audio
 from .simple_cache import SimpleCache
-from .dataset_type import DatasetType as DS
+from .dataset_type import DatasetType
+
+
+
 
 class ChillantoDataset(data.Dataset):
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
-
     def __init__(self, data, set_type, config):
         super().__init__()
         self.audio_files = list(data.keys())
@@ -48,30 +50,25 @@ class ChillantoDataset(data.Dataset):
         self.frame_shift_ms = config["frame_shift_ms"]
 
     @staticmethod
-    def default_config(custom_config={}):
-        """ NOTE: you must provide a `data_folder` """
-
+    def default_config(custom):
         config = {}
         config["group_speakers_by_id"] = True
         config["silence_prob"] = 0.1
         config["noise_prob"] = 0.8
-        config["unknown_prob"] = 0.1
-        config["input_length"] = 8000
+        config["input_length"] = 16000
         config["timeshift_ms"] = 100
+        config["unknown_prob"] = 0.1
         config["train_pct"] = 80
-        config["cache_size"] =32768
-        config["dev_pct"] = 5
-        config["test_pct"] = 40
-        config["sampling_freq"] = 8000
+        config["dev_pct"] = 10
+        config["test_pct"] = 10
+        config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
+        config["data_folder"] = ""#""/mnt/hdd/Datasets/speech-commands-8k-16bit"
+        config["sampling_freq"] = 16000
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
-        # add Unknown and Silence
-        config["wanted_words"] = ["asphyxia8k", "normal8k"]
-        config["n_labels"] = len(config["wanted_words"]) + 2
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
-
-        return dict(ChainMap(custom_config, config))
+        return ChainMap(custom,config)
 
     def _timeshift_audio(self, data):
         shift = (self.sampling_freq * self.timeshift_ms) // 1000
@@ -104,8 +101,10 @@ class ChillantoDataset(data.Dataset):
             data = librosa.core.load(example, sr=self.sampling_freq)[0] if file_data is None else file_data
             self._file_cache[example] = data
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
-        if self.set_type == DS.TRAIN:
+        if self.set_type == DatasetType.TRAIN:
             data = self._timeshift_audio(data)
+            # NOTE: for some reason a sample is the wrong length
+            data = data[:in_len]
 
         if random.random() < self.noise_prob or silence:
             a = random.random() * 0.1
@@ -158,11 +157,11 @@ class ChillantoDataset(data.Dataset):
                 bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
                 bucket = (bucket % (max_no_wavs + 1)) * (100. / max_no_wavs)
                 if bucket < dev_pct:
-                    tag = DS.DEV
+                    tag = DatasetType.DEV
                 elif bucket < test_pct + dev_pct:
-                    tag = DS.TEST
+                    tag = DatasetType.TEST
                 else:
-                    tag = DS.TRAIN
+                    tag = DatasetType.TRAIN
                 sets[tag.value][wav_name] = label
 
         for tag in range(len(sets)):
@@ -178,8 +177,7 @@ class ChillantoDataset(data.Dataset):
         print("labels are: ", words)
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
-        datasets = (cls(sets[0], DS.TRAIN, train_cfg), cls(sets[1], DS.DEV, test_cfg),
-                cls(sets[2], DS.TEST, test_cfg))
+        datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg), cls(sets[1], DatasetType.DEV, test_cfg), cls(sets[2], DatasetType.TEST, test_cfg))
         return datasets
 
     @staticmethod
@@ -208,5 +206,3 @@ class ChillantoDataset(data.Dataset):
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence
-
-

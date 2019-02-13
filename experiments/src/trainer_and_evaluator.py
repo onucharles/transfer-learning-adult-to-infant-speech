@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch
 from pathlib import Path
 from sklearn.externals import joblib
-from src.training_helpers import print_eval, set_seed, evaluate, compute_eval, confusion_matrix, print_f1_confusion_matrix
+from src.training_helpers import print_eval, set_seed, compute_eval, confusion_matrix, print_f1_confusion_matrix
 
 
 class TrainerAndEvaluator():
@@ -90,6 +90,30 @@ class TrainerAndEvaluator():
             self.optimizer = self.optimizers.pop()
             print("changing learning rate to {}".format(self.optimizer))
 
+    def evaluate(self):
+        print("Evaluate")
+        classes = np.arange(self.n_labels)
+        criterion = nn.CrossEntropyLoss()
+        results = []
+        total = 0
+        self.reset_confusion_matrix()
+        prediction_log = []
+        with torch.no_grad():
+            for model_in, labels in self.test_loader:
+                model_in = model_in.to(self.device)
+                labels = labels.to(self.device)
+                scores = self.model(model_in.clone().detach())
+                loss = criterion(scores, labels)
+                model_in_size = model_in.size(0)
+                results.append(compute_eval(scores, labels) * model_in_size)
+                self.update_confusion_matrix(scores, labels)
+                total += model_in.cpu().size(0)
+                prediction_log.append((scores, labels))
+        acc = sum(results) / len(self.test_loader)
+
+        print("Testing Accuracy", acc)
+        self.report_confusion_matrix("Testing", acc)
+        return prediction_log
 
     def perform_training(self):
 
@@ -135,6 +159,6 @@ class TrainerAndEvaluator():
                 self.report_validation(avg_acc, loss)
                 self.update_accuracy_and_save_model(avg_acc)
 
-        predictions = evaluate(self.n_labels, self.model, self.device, self.test_loader, self.print_confusion_matrix)
+        predictions = self.evaluate()
         self.dump_logs_and_predictions(predictions)
 

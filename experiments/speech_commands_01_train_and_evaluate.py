@@ -41,7 +41,7 @@ def build_config():
             'log_file_path': SPEECH_COMMANDS_LOGGING_FOLDER /  'logs.pkl',
             'predictions_path': SPEECH_COMMANDS_LOGGING_FOLDER / 'predictions.pkl',
             'print_confusion_matrix': True,
-            'n_epochs': 200,
+            'n_epochs': 1,
             'batch_size': 64
             })
 
