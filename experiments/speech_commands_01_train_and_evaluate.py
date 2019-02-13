@@ -40,6 +40,9 @@ def build_config():
             'model_path': SPEECH_COMMANDS_MODELS_FOLDER / 'latest.mdl',
             'log_file_path': SPEECH_COMMANDS_LOGGING_FOLDER /  'logs.pkl',
             'predictions_path': SPEECH_COMMANDS_LOGGING_FOLDER / 'predictions.pkl',
+            'print_confusion_matrix': True,
+            'n_epochs': 200,
+            'batch_size': 64
             })
 
     # Merge together the model, training and dataset configuration:

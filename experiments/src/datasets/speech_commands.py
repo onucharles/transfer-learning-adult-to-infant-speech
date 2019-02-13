@@ -113,7 +113,6 @@ class SpeechCommandsDataset(data.Dataset):
 
         if random.random() < self.noise_prob or silence:
             a = random.random() * 0.1
-            print(np.shape(data))
             data = np.clip(a * bg_noise + data, -1, 1)
         data = torch.from_numpy(
             preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)

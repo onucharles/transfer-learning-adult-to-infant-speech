@@ -48,7 +48,7 @@ def set_seed(config):
 
 
 # TODO: log experiment results
-def evaluate(n_labels, model, device, test_loader):
+def evaluate(n_labels, model, device, test_loader, print_confusion_matrix):
     print("evaluate")
     classes = np.arange(n_labels)
     criterion = nn.CrossEntropyLoss()
@@ -65,10 +65,12 @@ def evaluate(n_labels, model, device, test_loader):
             model_in_size = model_in.size(0)            
             results.append(compute_eval(scores, labels) * model_in_size)
             #total += model_in.cpu().size(0)
-            #conf_mat += confusion_matrix(scores.detach().cpu(), labels.detach().cpu(), np.arange(n_labels))
+            if print_confusion_matrix:
+                conf_mat += confusion_matrix(scores.detach().cpu(), labels.detach().cpu(), np.arange(n_labels))
             print("appending", model_in_size)
             prediction_log.append((scores, labels))
     acc = sum(results) / len(test_loader)
     print("acc", acc)
-    #print_f1_confusion_matrix("Testing", acc, conf_mat)
+    if print_confusion_matrix:
+        print_f1_confusion_matrix("Testing", acc, conf_mat)
     return prediction_log

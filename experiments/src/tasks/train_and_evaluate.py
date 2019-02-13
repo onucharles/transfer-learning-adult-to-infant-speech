@@ -22,7 +22,8 @@ def task_config(custom_config={}):
         'weight_decay': False,
         'momentum': False,
         'seed': 1,
-        'model_class': MODEL_CLASS
+        'model_class': MODEL_CLASS,
+        'print_confusion_matrix': False,
     }
     return dict(ChainMap(custom_config, default_config))
 
@@ -113,7 +114,8 @@ def task_train_and_evaluate(task_params):
 
             avg_acc = np.mean(accs)
 
-            #print_f1_confusion_matrix("Validation", avg_acc, conf_mat)
+            if config['print_confusion_matrix']:
+                print_f1_confusion_matrix("Validation", avg_acc, conf_mat)
             valid_logs.append((step_no, avg_acc, loss.item()))
             experiment.log_metric('dev_loss', loss.item())
             experiment.log_metric('dev_avg_acc', avg_acc)
