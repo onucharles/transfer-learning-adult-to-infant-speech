@@ -34,10 +34,11 @@ def build_config():
             'model_path': VOX_MODELS_FOLDER / 'latest.mdl',
             'log_file_path': VOX_LOGGING_FOLDER /  'logs.pkl',
             'predictions_path': VOX_LOGGING_FOLDER / 'predictions.pkl',
-            'n_epochs': 200,
+            'n_epochs': 400,
             'lr': [0.1, 0.01, 0.001],
             'schedule': [0, 300000, 600000],
             'batch_size': 128,
+            'model_class': 'res15',
             })
     # Merge together the model, training and dataset configuration:
     return dict(ChainMap(VoxCelebOneDataset.default_config({'data_folder': VOX_DATA_FOLDER }), config))

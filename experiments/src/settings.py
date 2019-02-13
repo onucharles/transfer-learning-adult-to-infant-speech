@@ -5,6 +5,14 @@ MODEL_CLASS = 'res8'
 # root folder
 DATA_FOLDER = Path('/').parent / 'network' / 'data1' / 'maloneyj'
 
+# Chillanto paths
+CHILLANTO = 'chillanto'
+CHILLANTO_DATA_FOLDER = DATA_FOLDER / 'dataset' / CHILLANTO
+CHILLANTO_LOGGING_FOLDER = DATA_FOLDER / 'logs' / CHILLANTO
+CHILLANTO_MODELS_FOLDER = DATA_FOLDER / 'models' / CHILLANTO
+CHILLANTO_EMBEDDINGS_FOLDER = DATA_FOLDER / 'embeddings' / CHILLANTO
+
+
 # Speech Commands paths
 SPEECH_COMMANDS = 'speech_commands'
 SPEECH_COMMANDS_DATA_FOLDER = DATA_FOLDER / 'dataset' / SPEECH_COMMANDS

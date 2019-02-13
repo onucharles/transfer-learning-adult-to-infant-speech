@@ -14,14 +14,24 @@ python wav_handling/rename_chillanto_wavs.py \
 import sys
 import platform
 
-project_root = r'D:\Users\Charley\Documents\Esperanza\ml_projects\ubenwa-transfer-learning'\
-               if platform.system() == 'Windows' else '/home/ml/c.onu/Documents/ml_projects/ubenwa-transfer-learning/'
-sys.path.insert(0, project_root)
+##project_root = r'D:\Users\Charley\Documents\Esperanza\ml_projects\ubenwa-transfer-learning'\
+#               if platform.system() == 'Windows' else '~/ubenwa-transfer-learning/'
+#sys.path.insert(0, project_root)
 
 import argparse
 import os
 from shutil import copyfile, copy2
-from utils.ioutils import create_folder
+#from utils.ioutils import create_folder
+import os
+import json
+import time
+
+
+def create_folder(newpath):
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+        print("created directory: " + str(newpath))
+
 
 def get_new_name(file_name):
     if not file_name:

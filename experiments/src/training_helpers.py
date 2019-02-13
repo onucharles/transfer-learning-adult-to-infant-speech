@@ -67,7 +67,6 @@ def evaluate(n_labels, model, device, test_loader, print_confusion_matrix):
             #total += model_in.cpu().size(0)
             if print_confusion_matrix:
                 conf_mat += confusion_matrix(scores.detach().cpu(), labels.detach().cpu(), np.arange(n_labels))
-            print("appending", model_in_size)
             prediction_log.append((scores, labels))
     acc = sum(results) / len(test_loader)
     print("acc", acc)
