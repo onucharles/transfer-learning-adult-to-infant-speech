@@ -12,10 +12,10 @@ from src.model import find_model
 def task_config(custom_config={}):
     """ Reasonable defaults for the training task """
     default_config = {
-        'n_epochs': 100,
+        'n_epochs': 1,
         'lr': [0.1, 0.01, 0.001],
-        'schedule': [0, 3000, 6000],
-        'batch_size': 64,
+        'schedule': [0, 30000, 60000],
+        'batch_size': 128,
         'weight_decay': 0.00001,
         'dev_every': 1,
         'use_nesterov': False,
@@ -72,9 +72,9 @@ def task_train_and_evaluate(task_params):
     train_logs = []
     valid_logs = []
     for epoch_idx in range(config["n_epochs"]):
+        print(f"Epoch {epoch_idx}")
         for batch_idx, (model_in, labels) in enumerate(train_loader):
             step_no += 1
-
             model.train()
             optimizer.zero_grad()
             model_in = model_in.to(device)
@@ -94,23 +94,26 @@ def task_train_and_evaluate(task_params):
             experiment.log_metric('train_loss', loss.item())
             experiment.log_metric('lr', optimizer.defaults['lr'])
 
+
         if epoch_idx % config["dev_every"] == config["dev_every"] - 1:
+            print("Validation")
             n_labels = config["n_labels"]
             model.eval()
             accs = []
             conf_mat = np.zeros((n_labels, n_labels))
-            for model_in, labels in dev_loader:
-                model_in = model_in.to(device)
-                labels = labels.to(device)
-                scores = model(model_in.clone().detach())
-                loss = criterion(scores, labels)
-                loss_numeric = loss.item()
-                accs.append(compute_eval(scores, labels).detach().cpu())
-                conf_mat += confusion_matrix(scores.detach().cpu(), labels.detach().cpu(), np.arange(n_labels))
+            with torch.no_grad():
+                for model_in, labels in dev_loader:
+                    model_in = model_in.to(device)
+                    labels = labels.to(device)
+                    scores = model(model_in)
+                    loss = criterion(scores, labels)
+                    loss_numeric = loss.item()
+                    accs.append(compute_eval(scores, labels).detach().cpu())
+                    #conf_mat += confusion_matrix(scores.detach().cpu(), labels.detach().cpu(), np.arange(n_labels))
 
             avg_acc = np.mean(accs)
 
-            print_f1_confusion_matrix("Validation", avg_acc, conf_mat)
+            #print_f1_confusion_matrix("Validation", avg_acc, conf_mat)
             valid_logs.append((step_no, avg_acc, loss.item()))
             experiment.log_metric('dev_loss', loss.item())
             experiment.log_metric('dev_avg_acc', avg_acc)
