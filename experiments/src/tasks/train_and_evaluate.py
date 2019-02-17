@@ -1,6 +1,7 @@
 from collections import ChainMap
 import numpy as np
 import torch
+import torch.utils.data as data
 import torch.nn as nn
 import torch
 
@@ -8,6 +9,20 @@ from src.comet_logger import CometLogger
 from src.settings import MODEL_CLASS
 from src.model import find_model
 from src.trainer_and_evaluator import TrainerAndEvaluator
+
+def build_data_loaders(config, dataset_class, sampler_func):
+    train_set, dev_set, test_set = dataset_class.splits(config)
+
+    print("training set: ", len(train_set))
+    print("dev set", len(dev_set))
+    print("test set", len(test_set))
+
+    sampler = sampler_func(train_set, config)
+    train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=False, drop_last=True, sampler=sampler)
+    dev= data.DataLoader(dev_set, batch_size=16)
+    test= data.DataLoader(test_set, batch_size=16)
+    return train, dev, test
+
 
 def task_config(custom_config={}):
     """ Reasonable defaults for the training task """

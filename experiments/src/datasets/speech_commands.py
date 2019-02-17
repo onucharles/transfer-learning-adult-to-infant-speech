@@ -23,6 +23,11 @@ class DatasetType(Enum):
     DEV = 1
     TEST = 2
 
+def speech_commands_sampler(train_set, config):
+    sample_weights = torch.tensor(np.zeros(len(train_set)) + (1 / config['n_labels']))
+    return torch.utils.data.sampler.WeightedRandomSampler(sample_weights, len(train_set))
+
+
 class SpeechCommandsDataset(data.Dataset):
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"

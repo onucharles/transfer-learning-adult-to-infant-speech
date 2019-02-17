@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch
+from torch.autograd import Variable
 from pathlib import Path
 from sklearn.externals import joblib
 from src.training_helpers import print_eval, set_seed, compute_eval, confusion_matrix, print_f1_confusion_matrix
@@ -14,15 +15,11 @@ class TrainerAndEvaluator():
         self.train_loader, self.dev_loader, self.test_loader = task_params['loaders']
         self.device = task_params['device']
 
-        set_seed(config)
         self.setup_model(task_params)
         self.setup_optimizers(config)
 
-
-        self.step_no = 0
-        self.max_acc = 0
-        self.train_logs = []
-        self.valid_logs = []
+        self.step_no = None
+        self.max_acc = None
 
         self.n_epochs = config['n_epochs']
         self.schedule = config['schedule']
@@ -30,21 +27,30 @@ class TrainerAndEvaluator():
         self.dev_every = config['dev_every']
         self.print_confusion_matrix = config['print_confusion_matrix']
 
+        self.setup_logs()
         self.setup_paths(config, self.experiment)
         self.experiment.log_parameters(config)
+        self.config = config
+
+    def setup_logs(self):
+        self.train_logs = []
+        self.valid_logs = []
 
     def setup_model(self, task_params):
         model = task_params['model']
         model.to(self.device)
-        self.model = torch.nn.DataParallel(model)
+        #self.model = torch.nn.DataParallel(model)
+        self.model = model
 
     def build_optimizer(self, config, lr):
-        return torch.optim.SGD(self.model.parameters(), lr=lr, nesterov=config["use_nesterov"], weight_decay=config["weight_decay"], momentum=config["momentum"])
+        def optimizer_factory():
+            return torch.optim.SGD(self.model.parameters(), lr=lr, nesterov=config["use_nesterov"], weight_decay=config["weight_decay"], momentum=config["momentum"])
+        return optimizer_factory
 
     def setup_optimizers(self, config):
         self.optimizers = [ self.build_optimizer(config, lr) for lr in config['lr'] ]
         self.optimizers.reverse()
-        self.optimizer = self.optimizers.pop()
+        self.optimizer = self.optimizers.pop()()
 
     def setup_paths(self, config, experiment):
         self.model_path = f"{config['model_path']}_{experiment.id}"
@@ -54,12 +60,7 @@ class TrainerAndEvaluator():
     def report_training(self, train_score, loss):
         print_eval("train step #{0} {1}".format(self.step_no, "accuracy"), train_score, loss, self.optimizer.defaults['lr'])
         self.train_logs.append((self.step_no, train_score.item(), loss.item()))
-        self.experiment.log_metric('train_loss', loss.item())
-        self.experiment.log_metric('lr', self.optimizer.defaults['lr'])
-
-    def report_validation(self, acc, loss):
-        self.experiment.log_metric('dev_loss', loss.item())
-        self.experiment.log_metric('dev_avg_acc', acc)
+        self.experiment.log_metric('train/loss', loss.item())
 
     def report_confusion_matrix(self, label, acc):
         if self.print_confusion_matrix:
@@ -78,6 +79,7 @@ class TrainerAndEvaluator():
         if avg_acc > self.max_acc:
             print("saving best model...")
             self.max_acc = avg_acc
+            self.best_model = self.model
             torch.save(self.model.state_dict(), f"{self.model_path}_{self.max_acc}.mdl")
 
     def dump_logs_and_predictions(self, predictions):
@@ -87,12 +89,11 @@ class TrainerAndEvaluator():
 
     def update_optimizer(self):
         if self.step_no in self.schedule:
-            self.optimizer = self.optimizers.pop()
+            self.optimizer = self.optimizers.pop()()
             print("changing learning rate to {}".format(self.optimizer))
 
     def evaluate(self):
         print("Evaluate")
-        classes = np.arange(self.n_labels)
         criterion = nn.CrossEntropyLoss()
         results = []
         total = 0
@@ -102,62 +103,89 @@ class TrainerAndEvaluator():
             for model_in, labels in self.test_loader:
                 model_in = model_in.to(self.device)
                 labels = labels.to(self.device)
-                scores = self.model(model_in.clone().detach())
+                scores = self.best_model(model_in.clone().detach())
                 loss = criterion(scores, labels)
                 model_in_size = model_in.size(0)
                 results.append(compute_eval(scores, labels) * model_in_size)
                 self.update_confusion_matrix(scores, labels)
                 total += model_in.cpu().size(0)
                 prediction_log.append((scores, labels))
-        acc = sum(results) / len(self.test_loader)
+        acc = sum(results) / total
 
         print("Testing Accuracy", acc)
+        self.experiment.log_metric('test/avg_acc', acc)
         self.report_confusion_matrix("Testing", acc)
         return prediction_log
 
     def perform_training(self):
+        self.step_no = 0
+        self.max_acc = 0
 
+        optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][0],
+                nesterov=self.config["use_nesterov"],
+                weight_decay=self.config["weight_decay"],
+                momentum=self.config["momentum"])
         criterion = nn.CrossEntropyLoss()
+        sched_idx = 0
+        schedule_steps = self.config["schedule"]
+        schedule_steps.append(np.inf)
         for epoch_idx in range(self.n_epochs):
             print(f"Epoch {epoch_idx}")
+            training_accuracies = []
             for batch_idx, (model_in, labels) in enumerate(self.train_loader):
-                self.step_no += 1
                 self.model.train()
                 self.optimizer.zero_grad()
+                self.step_no += 1
+
                 model_in = model_in.to(self.device)
                 labels = labels.to(self.device)
-                scores = self.model(model_in.clone().detach())
 
+                model_in = Variable(model_in, requires_grad=False)
+                scores = self.model(model_in)
+                labels = Variable(labels, requires_grad=False)
                 loss = criterion(scores, labels)
                 loss.backward()
 
                 self.optimizer.step()
-                self.update_optimizer()
+                #self.update_optimizer()
+                if self.step_no > schedule_steps[sched_idx]: # TODO need to update optimiser here.
+                    sched_idx += 1
+                    print("changing learning rate to {}".format(self.config["lr"][sched_idx]))
+                    optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][sched_idx],
+                        nesterov=self.config["use_nesterov"],
+                        momentum=self.config["momentum"], weight_decay=self.config["weight_decay"])
+
 
                 train_score = compute_eval(scores, labels)
+                training_accuracies.append(compute_eval(scores, labels).detach().cpu())
                 self.report_training(train_score, loss)
+            avg_train_acc = np.mean(training_accuracies)
+            self.experiment.log_metric('train/avg_acc', avg_train_acc)
 
             if epoch_idx % self.dev_every == self.dev_every - 1:
                 print("Validation")
                 self.model.eval()
-                accs = []
+                validation_accuracies= []
                 self.reset_confusion_matrix()
                 with torch.no_grad():
                     for model_in, labels in self.dev_loader:
                         model_in = model_in.to(self.device)
                         labels = labels.to(self.device)
+
+                        model_in = Variable(model_in, requires_grad=False)
                         scores = self.model(model_in)
+                        labels = Variable(labels, requires_grad=False)
                         loss = criterion(scores, labels)
-                        loss_numeric = loss.item()
-                        accs.append(compute_eval(scores, labels).detach().cpu())
+                        validation_accuracies.append(compute_eval(scores, labels).detach().cpu())
                         self.update_confusion_matrix(scores, labels)
+                        self.experiment.log_metric('dev/loss', loss.item())
 
-                avg_acc = np.mean(accs)
-                self.report_confusion_matrix("Validation", avg_acc)
+                avg_dev_acc = np.mean(validation_accuracies)
+                self.report_confusion_matrix("Validation", avg_dev_acc)
 
-                self.valid_logs.append((self.step_no, avg_acc, loss.item()))
-                self.report_validation(avg_acc, loss)
-                self.update_accuracy_and_save_model(avg_acc)
+                self.valid_logs.append((self.step_no, avg_dev_acc, loss.item()))
+                self.experiment.log_metric('dev/avg_acc', avg_dev_acc)
+                self.update_accuracy_and_save_model(avg_dev_acc)
 
         predictions = self.evaluate()
         self.dump_logs_and_predictions(predictions)

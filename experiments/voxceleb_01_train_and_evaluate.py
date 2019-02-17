@@ -1,6 +1,4 @@
 from pathlib import Path
-from collections import ChainMap
-
 import numpy as np
 import torch
 import torch.utils.data as data
@@ -10,7 +8,7 @@ from src.datasets.voxceleb_one import VoxCelebOneDataset
 from src.tasks.train_and_evaluate import task_train_and_evaluate, task_config, setup_task
 
 
-def get_sampler(distribution, total, labels, train_set):
+def voxceleb_sampler(distribution, total, labels, train_set):
     weights = np.zeros(len(labels))
     for (lbl, idx) in labels.items():
         if lbl in distribution:
@@ -22,7 +20,7 @@ def build_data_loaders(config, splits):
     print("training set: ", len(train_set))
     print("dev set", len(dev_set))
     print("test set", len(test_set))
-    sampler = get_sampler(splits['distribution'], splits['total'], splits['labels'], train_set)
+    sampler = voxceleb_sampler(splits['distribution'], splits['total'], splits['labels'], train_set)
     train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=False, drop_last=True, sampler=sampler)
     dev= data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
     test= data.DataLoader(test_set, batch_size=min(len(test_set), 16), shuffle=True)
@@ -34,14 +32,17 @@ def build_config():
             'model_path': VOX_MODELS_FOLDER / 'latest.mdl',
             'log_file_path': VOX_LOGGING_FOLDER /  'logs.pkl',
             'predictions_path': VOX_LOGGING_FOLDER / 'predictions.pkl',
+            'data_folder': VOX_DATA_FOLDER,
+            'print_confusion_matrix': True,
             'n_epochs': 400,
             'lr': [0.1, 0.01, 0.001],
             'schedule': [0, 300000, 600000],
-            'batch_size': 128,
-            'model_class': 'res15',
+            'batch_size': 24,
+            'model_class': 'res8',
+            'label_limit': 2
             })
     # Merge together the model, training and dataset configuration:
-    return dict(ChainMap(VoxCelebOneDataset.default_config({'data_folder': VOX_DATA_FOLDER }), config))
+    return VoxCelebOneDataset.default_config(config)
 
 
 def train_and_evaluate():

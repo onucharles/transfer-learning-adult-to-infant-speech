@@ -14,6 +14,10 @@ import random
 
 from sklearn import metrics
 
+# TODO: figure out accuracy calculation, precision, recall
+# TODO: calculate specificity
+
+
 def compute_eval(scores, labels):
     batch_size = labels.size(0)
     predictions = torch.max(scores, 1)[1].view(batch_size).data
@@ -72,3 +76,23 @@ def evaluate(n_labels, model, device, test_loader, print_confusion_matrix):
     if print_confusion_matrix:
         print_f1_confusion_matrix("Testing", acc, conf_mat)
     return prediction_log
+
+def load_weights(model, state_dict_path, params_to_load=[]):
+    """ Load weights into model
+
+    Args
+        model - an instance of the model
+        state_dict_path - string path to state_dict to be loaded
+        params_to_load - list of parameter names to be loaded.
+    """
+    print("loading weights from model at '{0}'.\nParameters to load are: {1}".format(state_dict_path, params_to_load))
+    state_dict = torch.load(state_dict_path)
+
+    desired_state_dict = {}
+    for name, item in state_dict.items():
+        if name in params_to_load:
+            desired_state_dict[name] = item
+
+    model.load_state_dict(desired_state_dict, strict=False)
+
+

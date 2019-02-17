@@ -20,6 +20,21 @@ from .simple_cache import SimpleCache
 from .dataset_type import DatasetType
 
 
+def chillanto_sampler(train_set, config):
+    # TODO fix this turkey
+    class_prob = [0, 0, 0.76, 0.24]
+    sample_weights = []
+
+    for i in range(len(train_set)):
+        _, label = train_set[i]
+        sample_weights.append(1 / class_prob[label])
+
+    sample_weights = torch.Tensor(sample_weights)
+    sampler = torch.utils.data.sampler.WeightedRandomSampler(sample_weights, len(train_set))
+
+    return sampler
+
+
 
 
 class ChillantoDataset(data.Dataset):
@@ -55,8 +70,10 @@ class ChillantoDataset(data.Dataset):
         config["group_speakers_by_id"] = True
         config["silence_prob"] = 0.1
         config["noise_prob"] = 0.8
-        config["input_length"] = 16000
+        config["input_length"] = 8000
         config["timeshift_ms"] = 100
+        config["cache_size"] =32768
+        config["seed"] = 11
         config["unknown_prob"] = 0.1
         config["train_pct"] = 80
         config["dev_pct"] = 10
@@ -66,6 +83,7 @@ class ChillantoDataset(data.Dataset):
         config["sampling_freq"] = 16000
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
+        config["n_feature_maps"] = 45
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
         return ChainMap(custom,config)
@@ -103,8 +121,6 @@ class ChillantoDataset(data.Dataset):
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
         if self.set_type == DatasetType.TRAIN:
             data = self._timeshift_audio(data)
-            # NOTE: for some reason a sample is the wrong length
-            data = data[:in_len]
 
         if random.random() < self.noise_prob or silence:
             a = random.random() * 0.1
@@ -178,6 +194,10 @@ class ChillantoDataset(data.Dataset):
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
         datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg), cls(sets[1], DatasetType.DEV, test_cfg), cls(sets[2], DatasetType.TEST, test_cfg))
+        #from collections import Counter
+        #print(Counter([ (k.split('/')[-1].split('_')[0]) for (k, v) in sets[0].items()]))
+        #print(Counter([ (k.split('/')[-1].split('_')[0]) for (k, v) in sets[1].items()]))
+        #print(Counter([ (k.split('/')[-1].split('_')[0]) for (k, v) in sets[2].items()]))
         return datasets
 
     @staticmethod

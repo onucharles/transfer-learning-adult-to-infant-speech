@@ -68,6 +68,7 @@ class VoxCelebOneDataset(data.Dataset):
         # add Unknown and Silence
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
+        config["label_limit"] = False
 
         return dict(ChainMap(custom_config, config))
 
@@ -138,16 +139,24 @@ class VoxCelebOneDataset(data.Dataset):
         }
 
 
-        speakers = {}
 
-        # NOTE: uncomment this line for debugging on a MUCH smaller dataset:
-        #for path in glob.iglob(f"{folder}/**/id1054*/*/*.wav"):
+        all_speakers = {}
+        all_speaker_ids = []
         for path in glob.iglob(f"{folder}/**/**/*/*.wav"):
             path_parts = path.split('/')
             speaker_id = path_parts[-3]
-            if speaker_id not in speakers:
-                speakers[speaker_id] = []
-            speakers[speaker_id].append(path)
+            if speaker_id not in all_speakers:
+                all_speakers[speaker_id] = []
+                all_speaker_ids.append(speaker_id)
+            all_speakers[speaker_id].append(path)
+
+        speakers = {}
+        if config['label_limit'] == False:
+            speakers = all_speakers
+        else:
+            for key in np.random.choice(all_speaker_ids, config['label_limit'], replace=False):
+                print(key)
+                speakers[key] = all_speakers[key]
 
         data_distribution = [ (k, len(files)) for (k, files) in speakers.items()]
         total = np.sum([count for (_, count) in data_distribution])
