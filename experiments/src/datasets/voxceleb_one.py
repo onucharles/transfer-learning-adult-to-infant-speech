@@ -104,7 +104,12 @@ class VoxCelebOneDataset(data.Dataset):
             self._file_cache[example] = data
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
         # NOTE: @charles: we're cropping to the first second:
-        data = data[:self.input_length]
+        start_indx = np.random.choice(np.arange(len(data) - self.input_length))
+        #data = data[start_indx:self.input_length]
+        #Aprint(np.shape(data), start_indx)
+        #data  = data[:self.input_length]
+        data  = data[start_indx:][:self.input_length]
+        # data = data[:self.input_length]
         if self.set_type == DS.TRAIN:
             data = self._timeshift_audio(data)
 

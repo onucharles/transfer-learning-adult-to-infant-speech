@@ -21,7 +21,7 @@ def build_config():
             'noise_prob': 0.0,
             'unknown_prob': 0.0,
             'input_length': 8000,
-            'wanted_words': ['normal8k', 'asphyxia8k'],
+            'wanted_words': ['normal', 'asphyxia'],
             'batch_size': 32,
             "dev_pct": 5,
             "test_pct": 40,
@@ -29,6 +29,7 @@ def build_config():
             'model_class': 'res8',
             'timeshift_ms': 100,
             'use_nesterov': False,
+            'seed': 3,
             })
 
     # Merge together the model, training and dataset configuration:
