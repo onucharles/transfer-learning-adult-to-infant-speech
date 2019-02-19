@@ -16,7 +16,6 @@ class TrainerAndEvaluator():
         self.device = task_params['device']
 
         self.setup_model(task_params)
-        self.setup_optimizers(config)
 
         self.step_no = None
         self.max_acc = None
@@ -32,6 +31,16 @@ class TrainerAndEvaluator():
         self.experiment.log_parameters(config)
         self.config = config
 
+        self.setup_loss_func(config)
+
+    def setup_loss_func(self, config):
+        self.loss_func = None
+
+        if config["loss"] == "hinge":
+            self.loss_func = nn.MultiMarginLoss()
+        if config["loss"] == "crossent":
+            self.loss_func = nn.CrossEntropyLoss()
+
     def setup_logs(self):
         self.train_logs = []
         self.valid_logs = []
@@ -39,18 +48,8 @@ class TrainerAndEvaluator():
     def setup_model(self, task_params):
         model = task_params['model']
         model.to(self.device)
-        #self.model = torch.nn.DataParallel(model)
-        self.model = model
-
-    def build_optimizer(self, config, lr):
-        def optimizer_factory():
-            return torch.optim.SGD(self.model.parameters(), lr=lr, nesterov=config["use_nesterov"], weight_decay=config["weight_decay"], momentum=config["momentum"])
-        return optimizer_factory
-
-    def setup_optimizers(self, config):
-        self.optimizers = [ self.build_optimizer(config, lr) for lr in config['lr'] ]
-        self.optimizers.reverse()
-        self.optimizer = self.optimizers.pop()()
+        self.model = torch.nn.DataParallel(model)
+        #self.model = model
 
     def setup_paths(self, config, experiment):
         self.model_path = f"{config['model_path']}_{experiment.id}"
@@ -87,14 +86,9 @@ class TrainerAndEvaluator():
         print('Training logs were written to: ', self.log_file_path)
         joblib.dump(predictions, self.predictions_path)
 
-    def update_optimizer(self):
-        if self.step_no in self.schedule:
-            self.optimizer = self.optimizers.pop()()
-            print("changing learning rate to {}".format(self.optimizer))
-
     def evaluate(self):
         print("Evaluate")
-        criterion = nn.CrossEntropyLoss()
+        criterion = self.loss_func
         results = []
         total = 0
         self.reset_confusion_matrix()
@@ -121,11 +115,11 @@ class TrainerAndEvaluator():
         self.step_no = 0
         self.max_acc = 0
 
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][0],
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][0],
                 nesterov=self.config["use_nesterov"],
                 weight_decay=self.config["weight_decay"],
                 momentum=self.config["momentum"])
-        criterion = nn.CrossEntropyLoss()
+        criterion = self.loss_func
         sched_idx = 0
         schedule_steps = self.config["schedule"]
         schedule_steps.append(np.inf)
@@ -147,17 +141,16 @@ class TrainerAndEvaluator():
                 loss.backward()
 
                 self.optimizer.step()
-                #self.update_optimizer()
                 if self.step_no > schedule_steps[sched_idx]: # TODO need to update optimiser here.
                     sched_idx += 1
                     print("changing learning rate to {}".format(self.config["lr"][sched_idx]))
-                    optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][sched_idx],
+                    self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][sched_idx],
                         nesterov=self.config["use_nesterov"],
                         momentum=self.config["momentum"], weight_decay=self.config["weight_decay"])
 
 
                 train_score = compute_eval(scores, labels)
-                training_accuracies.append(compute_eval(scores, labels).detach().cpu())
+                training_accuracies.append(train_score.detach().cpu())
                 self.report_training(train_score, loss)
             avg_train_acc = np.mean(training_accuracies)
             self.experiment.log_metric('train/avg_acc', avg_train_acc)
@@ -176,8 +169,10 @@ class TrainerAndEvaluator():
                         scores = self.model(model_in)
                         labels = Variable(labels, requires_grad=False)
                         loss = criterion(scores, labels)
-                        validation_accuracies.append(compute_eval(scores, labels).detach().cpu())
+                        valid_scores = compute_eval(scores, labels)
+                        validation_accuracies.append(valid_scores.detach().cpu())
                         self.update_confusion_matrix(scores, labels)
+                        print(f"validation accuracy. {valid_scores}, loss: {loss}")
                         self.experiment.log_metric('dev/loss', loss.item())
 
                 avg_dev_acc = np.mean(validation_accuracies)

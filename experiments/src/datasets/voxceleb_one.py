@@ -53,22 +53,23 @@ class VoxCelebOneDataset(data.Dataset):
         """ NOTE: you must provide a `data_folder` """
         config = {}
         config["group_speakers_by_id"] = True
-        config["silence_prob"] = 0.1
-        config["noise_prob"] = 0.8
-        config["unknown_prob"] = 0.1
+        config["silence_prob"] = 0.
+        config["noise_prob"] = 0.
+        config["unknown_prob"] = 0.
         config["input_length"] = 8000
         config["timeshift_ms"] = 100
         config["train_pct"] = 80
-        config["cache_size"] =32768
+        config["cache_size"] =0
         config["dev_pct"] = 10
         config["test_pct"] = 10
-        config["sampling_freq"] = 8000
+        config["sampling_freq"] = 16000
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
         # add Unknown and Silence
-        config["window_size_ms"] = 30
+        config["window_size_ms"] = 25
         config["frame_shift_ms"] = 10
         config["label_limit"] = False
+        config["loss"] = "hinge"
 
         return dict(ChainMap(custom_config, config))
 
@@ -103,13 +104,9 @@ class VoxCelebOneDataset(data.Dataset):
             data = librosa.core.load(example, sr=self.sampling_freq)[0] if file_data is None else file_data
             self._file_cache[example] = data
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
-        # NOTE: @charles: we're cropping to the first second:
+        # NOTE: @charles: we're randomly picking a subsection
         start_indx = np.random.choice(np.arange(len(data) - self.input_length))
-        #data = data[start_indx:self.input_length]
-        #Aprint(np.shape(data), start_indx)
-        #data  = data[:self.input_length]
         data  = data[start_indx:][:self.input_length]
-        # data = data[:self.input_length]
         if self.set_type == DS.TRAIN:
             data = self._timeshift_audio(data)
 
@@ -143,10 +140,43 @@ class VoxCelebOneDataset(data.Dataset):
             DS.TEST : {}
         }
 
+        added_speakers = []
+        speakers = {}
+        split_filename = 'iden_split.txt'
+        with open(folder / split_filename) as f:
+            file_splits = f.readlines()
+        file_splits = [x.strip().split(' ') for x in file_splits]
+
+        for (dset, fpath) in file_splits:
+            speaker_id = fpath.split('/')[0]
+            ds = DS.TRAIN
+            if dset == '2':
+                ds = DS.DEV
+            if dset == '3':
+                ds = DS.TEST
+
+            add_speaker = True
+            if config['label_limit'] != False:
+                if len(added_speakers) + 1 > config['label_limit']:
+                    add_speaker = False
+
+            if add_speaker:
+                if speaker_id not in added_speakers:
+                    added_speakers.append(speaker_id)
+                    speakers[speaker_id] = []
+                full_path = folder / 'wav' / fpath
+                sets[ds][full_path] = added_speakers.index(speaker_id) + 2
+                speakers[speaker_id].append(full_path)
 
 
-        all_speakers = {}
-        all_speaker_ids = []
+        data_distribution = [ (k, len(files)) for (k, files) in speakers.items()]
+        total = np.sum([count for (_, count) in data_distribution])
+        labels = {label: i + 2 for i, (label, _) in enumerate(data_distribution)}
+        labels.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1})
+        print(f"Total files: {total}")
+        print(f"Distribution: {data_distribution}")
+
+        """
         for path in glob.iglob(f"{folder}/**/**/*/*.wav"):
             path_parts = path.split('/')
             speaker_id = path_parts[-3]
@@ -163,13 +193,7 @@ class VoxCelebOneDataset(data.Dataset):
                 print(key)
                 speakers[key] = all_speakers[key]
 
-        data_distribution = [ (k, len(files)) for (k, files) in speakers.items()]
-        total = np.sum([count for (_, count) in data_distribution])
-        print(f"Total files: {total}")
-        print(f"Total labels: {len(data_distribution)}")
 
-        labels = {label: i + 2 for i, (label, _) in enumerate(data_distribution)}
-        labels.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1})
 
         for speaker_id, count in data_distribution:
             train_num = int(np.floor(count * train_pct / 100 ))
@@ -184,7 +208,7 @@ class VoxCelebOneDataset(data.Dataset):
 
             files = files - set(sets[DS.DEV].keys())
             sets[DS.TEST] = cls.rand_add_speaker_wavs(sets[DS.TEST], files, test_num, labels[speaker_id])
-
+        """
         bg_noise_files = []
         print("labels are: ", labels)
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)

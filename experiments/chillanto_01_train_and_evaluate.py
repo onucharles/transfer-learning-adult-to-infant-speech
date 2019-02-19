@@ -29,7 +29,7 @@ def build_config():
             'model_class': 'res8',
             'timeshift_ms': 100,
             'use_nesterov': False,
-            'seed': 3,
+            'seed': 5,
             })
 
     # Merge together the model, training and dataset configuration:

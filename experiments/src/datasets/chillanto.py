@@ -86,6 +86,7 @@ class ChillantoDataset(data.Dataset):
         config["n_feature_maps"] = 45
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
+        config["loss"] = "hinge"
         return ChainMap(custom,config)
 
     def _timeshift_audio(self, data):

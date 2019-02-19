@@ -112,6 +112,7 @@ class SpeechResModel(SerializableModule):
 class ConfigType(Enum):
     RES15 = "res15"
     RES26 = "res26"
+    RES34 = "res34"
     RES8 = "res8"
     RES15_NARROW = "res15-narrow"
     RES8_NARROW = "res8-narrow"
@@ -121,6 +122,7 @@ _configs = {
     ConfigType.RES15.value: dict(n_labels=12, use_dilation=True, n_layers=13, n_feature_maps=45),
     ConfigType.RES8.value: dict(n_labels=12, n_layers=6, n_feature_maps=45, res_pool=(4, 3), use_dilation=False),
     ConfigType.RES26.value: dict(n_labels=12, n_layers=24, n_feature_maps=45, res_pool=(2, 2), use_dilation=False),
+    ConfigType.RES34.value: dict(n_labels=12, n_layers=32, n_feature_maps=64, res_pool=(3, 3), use_dilation=False),
     ConfigType.RES15_NARROW.value: dict(n_labels=12, use_dilation=True, n_layers=13, n_feature_maps=19),
     ConfigType.RES8_NARROW.value: dict(n_labels=12, n_layers=6, n_feature_maps=19, res_pool=(4, 3), use_dilation=False),
     ConfigType.RES26_NARROW.value: dict(n_labels=12, n_layers=24, n_feature_maps=19, res_pool=(2, 2), use_dilation=False)

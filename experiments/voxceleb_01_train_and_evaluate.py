@@ -21,10 +21,14 @@ def build_data_loaders(config, splits):
     print("dev set", len(dev_set))
     print("test set", len(test_set))
     sampler = voxceleb_sampler(splits['distribution'], splits['total'], splits['labels'], train_set)
-   # train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=False, drop_last=True, sampler=sampler)
-    train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
-    dev= data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
-    test= data.DataLoader(test_set, batch_size=min(len(test_set), 16), shuffle=True)
+    train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=False,
+            num_workers=6,
+            sampler=sampler)
+#    train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
+    dev= data.DataLoader(dev_set,  num_workers=6, batch_size=min(len(dev_set),
+        1), shuffle=True)
+    test= data.DataLoader(test_set,num_workers=6,  batch_size=min(len(test_set),
+        1), shuffle=True)
     return train, dev, test
 
 def build_config():
@@ -35,16 +39,20 @@ def build_config():
             'predictions_path': VOX_LOGGING_FOLDER / 'predictions.pkl',
             'data_folder': VOX_DATA_FOLDER,
             'print_confusion_matrix': True,
-            'n_epochs': 30,
-            'lr': [0.1, 0.01, 0.001],
-            'schedule': [0, 300000, 600000],
-            'batch_size': 8,
-            'model_class': 'res8',
+            'n_epochs': 20,
+            'lr': [0.0001],
+            'schedule': [],
+            'batch_size': 1,
+            'model_class': 'res34',
+            'weight_decay': 0.00001,
+            'momentum': 0.9,
             'noise_prob': 0.0,
+            'input_length': 8000,
             'silence_prob': 0.0,
             'unknown_prob': 0.0,
             'label_limit': 2,
-            'seed': 4
+            'seed': 12
+
             })
     # Merge together the model, training and dataset configuration:
     return VoxCelebOneDataset.default_config(config)
