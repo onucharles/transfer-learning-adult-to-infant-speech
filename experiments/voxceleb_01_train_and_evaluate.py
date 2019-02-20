@@ -26,9 +26,9 @@ def build_data_loaders(config, splits):
             sampler=sampler)
 #    train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
     dev= data.DataLoader(dev_set,  num_workers=6, batch_size=min(len(dev_set),
-        1), shuffle=True)
+        16), shuffle=True)
     test= data.DataLoader(test_set,num_workers=6,  batch_size=min(len(test_set),
-        1), shuffle=True)
+        16), shuffle=True)
     return train, dev, test
 
 def build_config():
@@ -39,19 +39,16 @@ def build_config():
             'predictions_path': VOX_LOGGING_FOLDER / 'predictions.pkl',
             'data_folder': VOX_DATA_FOLDER,
             'print_confusion_matrix': True,
-            'n_epochs': 20,
-            'lr': [0.0001],
+            'n_epochs': 10,
+            'lr': [0.00005],
             'schedule': [],
-            'batch_size': 1,
-            'model_class': 'res34',
-            'weight_decay': 0.00001,
+            'batch_size': 8,
+            'model_class': 'res8',
+            'weight_decay': 0.000001,
             'momentum': 0.9,
-            'noise_prob': 0.0,
-            'input_length': 8000,
-            'silence_prob': 0.0,
-            'unknown_prob': 0.0,
-            'label_limit': 2,
-            'seed': 12
+            'input_length': 16000,
+            'label_limit': 3,
+            'seed': 9
 
             })
     # Merge together the model, training and dataset configuration:

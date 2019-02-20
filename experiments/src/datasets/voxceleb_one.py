@@ -30,20 +30,11 @@ class VoxCelebOneDataset(data.Dataset):
         self.set_type = set_type
         self.audio_labels = list(data.values())
         self.input_length = config["input_length"]
-        config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
-        self.bg_noise_audio = [librosa.core.load(file, sr=self.input_length)[0] for file in config["bg_noise_files"]]
-        self.unknown_prob = config["unknown_prob"]
-        self.silence_prob = config["silence_prob"]
-        self.noise_prob = config["noise_prob"]
         self.n_dct = config["n_dct_filters"]
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
         self.filters = librosa.filters.dct(config["n_dct_filters"], config["n_mels"])
         self.n_mels = config["n_mels"]
-        self._audio_cache = SimpleCache(config["cache_size"])
-        self._file_cache = SimpleCache(config["cache_size"])
-        n_unk = len(list(filter(lambda x: x == 1, self.audio_labels)))
-        self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
         self.sampling_freq = config["sampling_freq"]
         self.window_size_ms = config["window_size_ms"]
         self.frame_shift_ms = config["frame_shift_ms"]
@@ -53,15 +44,8 @@ class VoxCelebOneDataset(data.Dataset):
         """ NOTE: you must provide a `data_folder` """
         config = {}
         config["group_speakers_by_id"] = True
-        config["silence_prob"] = 0.
-        config["noise_prob"] = 0.
-        config["unknown_prob"] = 0.
         config["input_length"] = 8000
         config["timeshift_ms"] = 100
-        config["train_pct"] = 80
-        config["cache_size"] =0
-        config["dev_pct"] = 10
-        config["test_pct"] = 10
         config["sampling_freq"] = 16000
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
@@ -82,27 +66,8 @@ class VoxCelebOneDataset(data.Dataset):
         return data[:len(data) - a] if a else data[b:]
 
     def preprocess(self, example, silence=False):
-        if silence:
-            example = "__silence__"
-        if random.random() < 0.7:
-            try:
-                return self._audio_cache[example]
-            except KeyError:
-                pass
         in_len = self.input_length
-        if self.bg_noise_audio:
-            bg_noise = random.choice(self.bg_noise_audio)
-            a = random.randint(0, len(bg_noise) - in_len - 1)
-            bg_noise = bg_noise[a:a + in_len]
-        else:
-            bg_noise = np.zeros(in_len)
-
-        if silence:
-            data = np.zeros(in_len, dtype=np.float32)
-        else:
-            file_data = self._file_cache.get(example)
-            data = librosa.core.load(example, sr=self.sampling_freq)[0] if file_data is None else file_data
-            self._file_cache[example] = data
+        data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
         # NOTE: @charles: we're randomly picking a subsection
         start_indx = np.random.choice(np.arange(len(data) - self.input_length))
@@ -110,29 +75,15 @@ class VoxCelebOneDataset(data.Dataset):
         if self.set_type == DS.TRAIN:
             data = self._timeshift_audio(data)
 
-        if random.random() < self.noise_prob or silence:
-            a = random.random() * 0.1
-            data = np.clip(a * bg_noise + data, -1, 1)
         data = torch.from_numpy(
             preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
         )
-        self._audio_cache[example] = data
         return data
 
 
     @classmethod
-    def rand_add_speaker_wavs(cls, existing, files, num, label):
-        files_to_add = set(np.random.choice(list(files), num, replace=False))
-        for wav in files_to_add:
-            existing[wav] = label
-        return existing
-
-    @classmethod
     def splits(cls, config):
         folder = config["data_folder"]
-        train_pct = config["train_pct"]
-        dev_pct = config["dev_pct"]
-        test_pct = config["test_pct"]
 
         sets = {
             DS.TRAIN : {},
@@ -165,91 +116,29 @@ class VoxCelebOneDataset(data.Dataset):
                     added_speakers.append(speaker_id)
                     speakers[speaker_id] = []
                 full_path = folder / 'wav' / fpath
-                sets[ds][full_path] = added_speakers.index(speaker_id) + 2
+                sets[ds][full_path] = added_speakers.index(speaker_id)
                 speakers[speaker_id].append(full_path)
 
 
         data_distribution = [ (k, len(files)) for (k, files) in speakers.items()]
         total = np.sum([count for (_, count) in data_distribution])
-        labels = {label: i + 2 for i, (label, _) in enumerate(data_distribution)}
-        labels.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1})
+        labels = {label: i for i, (label, _) in enumerate(data_distribution)}
         print(f"Total files: {total}")
         print(f"Distribution: {data_distribution}")
-
-        """
-        for path in glob.iglob(f"{folder}/**/**/*/*.wav"):
-            path_parts = path.split('/')
-            speaker_id = path_parts[-3]
-            if speaker_id not in all_speakers:
-                all_speakers[speaker_id] = []
-                all_speaker_ids.append(speaker_id)
-            all_speakers[speaker_id].append(path)
-
-        speakers = {}
-        if config['label_limit'] == False:
-            speakers = all_speakers
-        else:
-            for key in np.random.choice(all_speaker_ids, config['label_limit'], replace=False):
-                print(key)
-                speakers[key] = all_speakers[key]
-
-
-
-        for speaker_id, count in data_distribution:
-            train_num = int(np.floor(count * train_pct / 100 ))
-            dev_num = int(np.floor(count * dev_pct / 100 ))
-            test_num = int(np.floor(count * test_pct / 100))
-
-            files = set(speakers[speaker_id])
-            sets[DS.TRAIN] = cls.rand_add_speaker_wavs(sets[DS.TRAIN], files, train_num, labels[speaker_id])
-
-            files = files - set(sets[DS.TRAIN].keys())
-            sets[DS.DEV] = cls.rand_add_speaker_wavs(sets[DS.DEV], files, dev_num, labels[speaker_id])
-
-            files = files - set(sets[DS.DEV].keys())
-            sets[DS.TEST] = cls.rand_add_speaker_wavs(sets[DS.TEST], files, test_num, labels[speaker_id])
-        """
-        bg_noise_files = []
         print("labels are: ", labels)
-        train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
-        test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
-        datasets = (cls(sets[DS.TRAIN], DS.TRAIN, train_cfg),
-                cls(sets[DS.DEV], DS.DEV, test_cfg),
-                cls(sets[DS.TEST], DS.TEST, test_cfg))
+        datasets = (cls(sets[DS.TRAIN], DS.TRAIN, config), cls(sets[DS.DEV], DS.DEV, config), cls(sets[DS.TEST], DS.TEST, config))
         return {
                 'datasets': datasets,
-                # TODO: there is a strong assumption that this is sorted:
                 'distribution': { lbl: count for lbl, count in data_distribution },
                 'labels': labels,
                 'n_labels': len(labels),
                 'total': total
                 }
 
-    @staticmethod
-    def convert_dataset(data_set):
-        """
-        Converts a model.SpeechDataset object into a plain data array and label vector
-        :param data_set:
-        :return:
-        """
-        data = []
-        labels = []
-        for i in range(len(data_set)):
-            mfcc_img, class_label = data_set[i]
-            data.append(mfcc_img.numpy().flatten())
-            labels.append(class_label)
-
-        data = np.array(data)
-        labels = np.array(labels)
-        print('data converted to array of: {0}. and labels: {1}'.format(data.shape, labels.shape))
-        return data, labels
-
     def __getitem__(self, index):
-        if index >= len(self.audio_labels):
-            return self.preprocess(None, silence=True), 0
         return self.preprocess(self.audio_files[index]), self.audio_labels[index]
 
     def __len__(self):
-        return len(self.audio_labels) + self.n_silence
+        return len(self.audio_labels)
 
 
