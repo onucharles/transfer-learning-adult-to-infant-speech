@@ -6,9 +6,9 @@ from src.training_helpers import set_seed
 def build_config():
     config = task_config({
             'project': 'chillanto_train_and_evaluate',
-            'model_path': CHILLANTO_MODELS_FOLDER / 'chill',
-            'log_file_path': CHILLANTO_LOGGING_FOLDER /  'logs.pkl',
-            'predictions_path': CHILLANTO_LOGGING_FOLDER / 'predictions.pkl',
+            'model_path': CHILLANTO_MODELS_FOLDER / 'chillanto' ,
+            'log_file_path': CHILLANTO_LOGGING_FOLDER ,
+            'predictions_path': CHILLANTO_LOGGING_FOLDER ,
             "data_folder": CHILLANTO_DATA_FOLDER,
             'print_confusion_matrix': True,
             'lr': [0.001, 0.0001],

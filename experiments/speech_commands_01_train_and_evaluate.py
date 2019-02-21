@@ -6,9 +6,9 @@ from src.tasks.train_and_evaluate import task_train_and_evaluate, task_config, s
 def build_config():
     config = task_config({
             'project': 'speech-commands-train',
-            'model_path': SPEECH_COMMANDS_MODELS_FOLDER / 'latest.mdl',
-            'log_file_path': SPEECH_COMMANDS_LOGGING_FOLDER /  'logs.pkl',
-            'predictions_path': SPEECH_COMMANDS_LOGGING_FOLDER / 'predictions.pkl',
+            'model_path': SPEECH_COMMANDS_MODELS_FOLDER  ,
+            'log_file_path': SPEECH_COMMANDS_LOGGING_FOLDER ,
+            'predictions_path': SPEECH_COMMANDS_LOGGING_FOLDER ,
             'data_folder': SPEECH_COMMANDS_DATA_FOLDER,
             'print_confusion_matrix': True,
             'n_epochs':100,
