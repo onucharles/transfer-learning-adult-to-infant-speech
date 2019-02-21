@@ -38,18 +38,17 @@ def build_config():
             'log_file_path': VOX_LOGGING_FOLDER /  'logs.pkl',
             'predictions_path': VOX_LOGGING_FOLDER / 'predictions.pkl',
             'data_folder': VOX_DATA_FOLDER,
-            'print_confusion_matrix': True,
-            'n_epochs': 10,
-            'lr': [0.00005],
+            'print_confusion_matrix': False,
+            'n_epochs': 20,
+            'lr': [0.00001],
             'schedule': [],
             'batch_size': 8,
-            'model_class': 'res8',
+            'model_class': 'res15',
             'weight_decay': 0.000001,
             'momentum': 0.9,
-            'input_length': 16000,
-            'label_limit': 3,
+            'input_length': 40000,
+            'label_limit': 10,
             'seed': 9
-
             })
     # Merge together the model, training and dataset configuration:
     return VoxCelebOneDataset.default_config(config)

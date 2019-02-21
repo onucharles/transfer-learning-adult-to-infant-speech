@@ -84,6 +84,7 @@ class TrainerAndEvaluator():
     def dump_logs_and_predictions(self, predictions):
         joblib.dump((self.train_logs, self.valid_logs), self.log_file_path)
         print('Training logs were written to: ', self.log_file_path)
+        print(f'Experiment: {self.experiment._get_experiment_url()}')
         joblib.dump(predictions, self.predictions_path)
 
     def evaluate(self):

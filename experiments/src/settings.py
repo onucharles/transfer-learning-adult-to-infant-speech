@@ -30,4 +30,4 @@ VOX_EMBEDDINGS_FOLDER = DATA_FOLDER / 'embeddings' / VOX
 
 # 3rd party integrations
 COMET_API_KEY = 'bSyRm6vJpAwfehizXic7Fo0bY'
-COMET_WORKSPACE = 'jlebensold'
+COMET_WORKSPACE = 'co-jl-transfer'
