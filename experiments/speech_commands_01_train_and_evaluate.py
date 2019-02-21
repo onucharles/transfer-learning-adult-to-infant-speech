@@ -5,16 +5,17 @@ from src.tasks.train_and_evaluate import task_train_and_evaluate, task_config, s
 
 def build_config():
     config = task_config({
-            'project': 'speech_commands_train_and_evaluate',
+            'project': 'speech-commands-train',
             'model_path': SPEECH_COMMANDS_MODELS_FOLDER / 'latest.mdl',
             'log_file_path': SPEECH_COMMANDS_LOGGING_FOLDER /  'logs.pkl',
             'predictions_path': SPEECH_COMMANDS_LOGGING_FOLDER / 'predictions.pkl',
             'data_folder': SPEECH_COMMANDS_DATA_FOLDER,
             'print_confusion_matrix': True,
-            'n_epochs': 100,
+            'n_epochs':100,
             'batch_size': 64,
             'cache_size':32768,
             'weight_decay': 0.00001,
+            'dev_every': 1
             })
 
     # Merge together the model, training and dataset configuration:
@@ -23,6 +24,10 @@ def build_config():
 
 def train_and_evaluate():
     config = build_config()
+    print('Training on speech commands dataset...' +
+        '\nModel={}\nno of epochs={}\nbatch size={}\ndev every={}'.format(
+            config['model_class'], config['n_epochs'], config['batch_size'],
+                config['dev_every']))
     data_loaders = build_data_loaders(config, SpeechCommandsDataset, speech_commands_sampler)
     params = setup_task(config, data_loaders, 12)
     task_train_and_evaluate(params)
