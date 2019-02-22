@@ -21,22 +21,22 @@ def build_data_loaders(config, splits):
     print("dev set", len(dev_set))
     print("test set", len(test_set))
     sampler = voxceleb_sampler(splits['distribution'], splits['total'], splits['labels'], train_set)
-    train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=False,
-            num_workers=6,
-            sampler=sampler)
-#    train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
-    dev= data.DataLoader(dev_set,  num_workers=6, batch_size=min(len(dev_set),
+#    train= data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=False,
+#            num_workers=6,
+#            sampler=sampler)
+    train= data.DataLoader(train_set, num_workers=8, batch_size=config["batch_size"], shuffle=True, drop_last=True)
+    dev= data.DataLoader(dev_set,  num_workers=8, batch_size=min(len(dev_set),
         16), shuffle=True)
-    test= data.DataLoader(test_set,num_workers=6,  batch_size=min(len(test_set),
+    test= data.DataLoader(test_set,num_workers=8,  batch_size=min(len(test_set),
         16), shuffle=True)
     return train, dev, test
 
 def build_config():
     config = task_config({
             'project': 'voxceleb1_train_and_evaluate',
-            'model_path': VOX_MODELS_FOLDER / 'latest.mdl',
-            'log_file_path': VOX_LOGGING_FOLDER /  'logs.pkl',
-            'predictions_path': VOX_LOGGING_FOLDER / 'predictions.pkl',
+            'model_path': VOX_MODELS_FOLDER ,
+            'log_file_path': VOX_LOGGING_FOLDER ,
+            'predictions_path': VOX_LOGGING_FOLDER ,
             'data_folder': VOX_DATA_FOLDER,
             'print_confusion_matrix': True,
             'n_epochs': 100,

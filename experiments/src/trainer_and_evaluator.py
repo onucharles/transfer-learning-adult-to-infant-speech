@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -53,9 +54,15 @@ class TrainerAndEvaluator():
         #self.model = model
 
     def setup_paths(self, config, experiment):
-        self.model_path = f"{config['model_path']}_{experiment.id}"
-        self.predictions_path = f"{config['predictions_path']}_{experiment.id}.pred"
-        self.log_file_path = f"{config['log_file_path']}_{experiment.id}.log"
+        model_path = config['model_path'] / experiment.id
+        predictions_path = config['predictions_path'] / experiment.id
+        log_file_path = config['log_file_path'] / experiment.id
+        os.makedirs(model_path, exist_ok=True)
+        os.makedirs(predictions_path, exist_ok=True)
+        os.makedirs(log_file_path, exist_ok=True)
+        self.model_path = model_path
+        self.predictions_path = f"{predictions_path}/predictions.pkl"
+        self.log_file_path = f"{log_file_path}/training.log"
 
     def report_training(self, train_score, loss):
         print("Training - epoch:{} step:{} accuracy:{} loss:{} learning_rate:{}"
@@ -81,11 +88,12 @@ class TrainerAndEvaluator():
             print("saving best model...")
             self.max_acc = avg_acc
             self.best_model = self.model
-            torch.save(self.model.state_dict(), f"{self.model_path}_{self.max_acc}.mdl")
+            torch.save(self.model.state_dict(), f"{self.model_path}/{self.max_acc}.mdl")
 
     def dump_logs_and_predictions(self, predictions):
         joblib.dump((self.train_logs, self.valid_logs), self.log_file_path)
-        print('Training logs were written to: ', self.log_file_path)
+        print(f'Training logs were written to: {self.log_file_path}')
+        print(f'Experiment: {self.experiment._get_experiment_url()}')
         joblib.dump(predictions, self.predictions_path)
 
     def evaluate(self):
