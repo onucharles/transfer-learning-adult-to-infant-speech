@@ -19,8 +19,8 @@ def build_data_loaders(config, dataset_class, sampler_func):
 
     sampler = sampler_func(train_set, config)
     train= data.DataLoader(train_set, num_workers=4, batch_size=config["batch_size"], shuffle=False, drop_last=True, sampler=sampler)
-    dev= data.DataLoader(dev_set, num_workers=4, batch_size=16)
-    test= data.DataLoader(test_set,  num_workers=4,batch_size=16)
+    dev= data.DataLoader(dev_set, num_workers=4, batch_size=1000)
+    test= data.DataLoader(test_set,  num_workers=4,batch_size=1000)
     return train, dev, test
 
 
