@@ -68,7 +68,7 @@ class TrainerAndEvaluator():
         print("Training - epoch:{} step:{} accuracy:{} loss:{} learning_rate:{}"
             .format(self.epoch_no, self.step_no, train_score, loss, self.optimizer.defaults['lr']))
         self.train_logs.append((self.step_no, train_score.item(), loss.item()))
-        self.experiment.log_metric('train/loss', loss.item(), self.step_no)
+        self.experiment.log_metric('train_loss', loss.item(), self.step_no)
 
     def report_confusion_matrix(self, label, acc):
         if self.print_confusion_matrix:
@@ -117,11 +117,12 @@ class TrainerAndEvaluator():
         acc = sum(results) / total
 
         print("Testing Accuracy", acc)
-        self.experiment.log_metric('test/avg_acc', acc)
+        self.experiment.log_metric('test_accuracy', acc)
         self.report_confusion_matrix("Testing", acc)
         return prediction_log
 
     def perform_training(self):
+        self.epoch_no = 0
         self.step_no = 0
         self.max_acc = 0
 
@@ -135,7 +136,8 @@ class TrainerAndEvaluator():
         schedule_steps.append(np.inf)
         for epoch_idx in range(self.n_epochs):
             print(f"Epoch {epoch_idx}")
-            self.epoch_no = epoch_idx + 1
+            self.epoch_no += 1
+            self.experiment.log_current_epoch(self.epoch_no)
 
             training_accuracies = []
             for batch_idx, (model_in, labels) in enumerate(self.train_loader):
@@ -159,13 +161,13 @@ class TrainerAndEvaluator():
                     self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][sched_idx],
                         nesterov=self.config["use_nesterov"],
                         momentum=self.config["momentum"], weight_decay=self.config["weight_decay"])
-                    self.experiment.log_metric('learning_rate', self.config["lr"][sched_idx], step=self.step_no)
+                self.experiment.log_metric('learning_rate', self.config["lr"][sched_idx], step=self.step_no)
 
                 train_score = compute_eval(scores, labels)
                 training_accuracies.append(train_score.detach().cpu())
                 self.report_training(train_score, loss)
             avg_train_acc = np.mean(training_accuracies)
-            self.experiment.log_metric('train/avg_acc', avg_train_acc, step=self.step_no)
+            self.experiment.log_metric('train_accuracy', avg_train_acc, step=self.step_no)
 
             if epoch_idx % self.dev_every == self.dev_every - 1:
                 print("Validation")
@@ -185,13 +187,13 @@ class TrainerAndEvaluator():
                         validation_accuracies.append(valid_scores.detach().cpu())
                         self.update_confusion_matrix(scores, labels)
                         print(f"validation accuracy. {valid_scores}, loss: {loss}")
-                        self.experiment.log_metric('dev/loss', loss.item(), step=self.step_no)
+                        self.experiment.log_metric('validation_loss', loss.item(), step=self.step_no)
 
                 avg_dev_acc = np.mean(validation_accuracies)
                 self.report_confusion_matrix("Validation", avg_dev_acc)
 
                 self.valid_logs.append((self.step_no, avg_dev_acc, loss.item()))
-                self.experiment.log_metric('dev/avg_acc', avg_dev_acc, step=self.step_no)
+                self.experiment.log_metric('validation_accuracy', avg_dev_acc, step=self.step_no)
                 self.update_accuracy_and_save_model(avg_dev_acc)
 
         predictions = self.evaluate()

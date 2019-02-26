@@ -40,15 +40,18 @@ def build_config():
             'data_folder': VOX_DATA_FOLDER,
             'print_confusion_matrix': False,
             'n_epochs': 400,
-            'lr': [0.00001],
-            'schedule': [],
-            'batch_size': 16,
-            'model_class': 'vgg11',
+            'lr': [0.001, 0.0001, 0.00001, 0.000001],
+            'schedule': [25000, 50000, 75000],
+            'batch_size': 64,
             'weight_decay': 0.000001,
             'momentum': 0.9,
-            'input_length': 40000,
             'label_limit': 200,
-            'seed': 9
+            'seed': 9,
+            'model_class': 'vgg11',
+            'input_length': 48000, # let's use 3 secs for now as in vgg paper.
+            'loss': 'hinge',
+            #'n_feature_maps': 128,
+            #'use_dilation': False
             })
     # Merge together the model, training and dataset configuration:
     return VoxCelebOneDataset.default_config(config)
@@ -61,4 +64,12 @@ def train_and_evaluate():
     config['n_labels'] = splits['n_labels']
     data_loaders = build_data_loaders(config, splits)
     params = setup_task(config, data_loaders, config['n_labels'])
+
+    # print number of parameters in model
+    model, experiment = params['model'], params['experiment']
+    no_of_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print('Model has {0} parameters'.format(no_of_params))
+    experiment.set_model_graph((str(model)))
+    # return
+
     task_train_and_evaluate(params)

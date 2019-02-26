@@ -44,7 +44,7 @@ class VoxCelebOneDataset(data.Dataset):
         """ NOTE: you must provide a `data_folder` """
         config = {}
         config["group_speakers_by_id"] = True
-        config["input_length"] = 8000
+        config["input_length"] = 48000
         config["timeshift_ms"] = 100
         config["sampling_freq"] = 16000
         config["n_dct_filters"] = 40
