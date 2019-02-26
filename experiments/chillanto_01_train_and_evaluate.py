@@ -26,10 +26,11 @@ def build_config():
             "dev_pct": 5,
             "test_pct": 40,
             "sampling_freq": 8000,
-            'model_class': 'res8',
+#            'model_class': 'res8',
+            'model_class': 'vgg11',
             'timeshift_ms': 100,
             'use_nesterov': False,
-            'seed': 9,
+            'seed': 3,
             })
 
     # Merge together the model, training and dataset configuration:
