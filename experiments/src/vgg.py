@@ -105,7 +105,7 @@ def vgg11(**kwargs):
 def vgg11_bn(**kwargs):
     """VGG 11-layer model (configuration "A") with batch normalization
     """
-    model = VGG(make_layers(cfg['A'], batch_norm=True), **kwargs)
+    model = VGG(make_layers(cfg['AA'], batch_norm=True), **kwargs)
     return model
 
 
