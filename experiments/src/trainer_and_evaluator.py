@@ -161,7 +161,7 @@ class TrainerAndEvaluator():
                     self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][sched_idx],
                         nesterov=self.config["use_nesterov"],
                         momentum=self.config["momentum"], weight_decay=self.config["weight_decay"])
-                self.experiment.log_metric('learning_rate', self.config["lr"][sched_idx], step=self.step_no)
+                    self.experiment.log_metric('learning_rate', self.config["lr"][sched_idx], step=self.step_no)
 
                 train_score = compute_eval(scores, labels)
                 training_accuracies.append(train_score.detach().cpu())

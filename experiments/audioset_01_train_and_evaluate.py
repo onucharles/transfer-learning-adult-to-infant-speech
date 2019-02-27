@@ -39,12 +39,13 @@ def build_config():
             'predictions_path': AUDIOSET_LOGGING_FOLDER ,
             'data_folder': AUDIOSET_DATA_FOLDER,
             'print_confusion_matrix': False,
-            'n_epochs': 400,
-            'lr': [0.001, 0.0001, 0.00001],
+            'n_epochs': 30,
+            'lr': [0.01, 0.001, 0.0001],
             'schedule': [180000, 200000],
             'batch_size': 64,
-            'model_class': 'res26-narrow',
+            'model_class': 'vgg11_bn',
             'weight_decay': 0.000001,
+            'input_length': 8000,
             'momentum': 0.9,
             'seed': 9
             })

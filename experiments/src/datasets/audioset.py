@@ -25,7 +25,7 @@ from .dataset_type import DatasetType as DS
 class AudioSetDataset(data.Dataset):
     def __init__(self, data, set_type, config):
         super().__init__()
-        self.audio_files = list([ d for (d, l) in data])
+        self.audio_files = list([ d for (d, _) in data])
         self.set_type = set_type
         self.audio_labels = list([ l for (_, l) in data])
         self.input_length = config["input_length"]
@@ -118,6 +118,7 @@ class AudioSetDataset(data.Dataset):
                 }
 
     def __getitem__(self, index):
+        print(self.audio_labels[index])
         return self.preprocess(self.audio_files[index]), self.audio_labels[index]
 
     def __len__(self):

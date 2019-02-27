@@ -15,32 +15,23 @@ import torch.nn.functional as F
 import torch.utils.data as data
 
 from .manage_audio import preprocess_audio
-from .simple_cache import SimpleCache
 
 from .dataset_type import DatasetType as DS
 
 
 
-class VCTKDataset(data.Dataset):
+class ESC50Dataset(data.Dataset):
     def __init__(self, data, set_type, config):
         super().__init__()
         self.audio_files = list(data.keys())
         self.set_type = set_type
         self.audio_labels = list(data.values())
         self.input_length = config["input_length"]
-        config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
-        self.bg_noise_audio = [librosa.core.load(file, sr=self.input_length)[0] for file in config["bg_noise_files"]]
-        self.unknown_prob = config["unknown_prob"]
-        self.silence_prob = config["silence_prob"]
-        self.noise_prob = config["noise_prob"]
         self.n_dct = config["n_dct_filters"]
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
         self.filters = librosa.filters.dct(config["n_dct_filters"], config["n_mels"])
         self.n_mels = config["n_mels"]
-        self._audio_cache = SimpleCache(config["cache_size"])
-        self._file_cache = SimpleCache(config["cache_size"])
-        n_unk = len(list(filter(lambda x: x == 1, self.audio_labels)))
         self.sampling_freq = config["sampling_freq"]
         self.window_size_ms = config["window_size_ms"]
         self.frame_shift_ms = config["frame_shift_ms"]
@@ -49,22 +40,17 @@ class VCTKDataset(data.Dataset):
     def default_config(custom_config={}):
         """ NOTE: you must provide a `data_folder` """
         config = {}
-        config["group_speakers_by_id"] = True
-        config["silence_prob"] = 0.1
-        config["noise_prob"] = 0.8
-        config["unknown_prob"] = 0.1
         config["input_length"] = 8000
         config["timeshift_ms"] = 100
         config["train_pct"] = 60
         config["dev_pct"] = 20
         config["test_pct"] = 20
-        config["cache_size"] =32768
-        config["sampling_freq"] = 8000
+        config["sampling_freq"] = 16000
         config["n_dct_filters"] = 40
-        config["n_mels"] = 40
+        config["n_mels"] = 60
         # add Unknown and Silence
-        config["window_size_ms"] = 30
-        config["frame_shift_ms"] = 10
+        config["window_size_ms"] = 41
+        config["frame_shift_ms"] = 20
         config["label_limit"] = False
 
         return dict(ChainMap(custom_config, config))
@@ -96,7 +82,7 @@ class VCTKDataset(data.Dataset):
 
 
     @classmethod
-    def rand_add_speaker_wavs(cls, existing, files, num, label):
+    def rand_add_category_wavs(cls, existing, files, num, label):
         files_to_add = set(np.random.choice(list(files), num, replace=False))
         for wav in files_to_add:
             existing[wav] = label
@@ -117,47 +103,47 @@ class VCTKDataset(data.Dataset):
 
 
 
-        all_speakers = {}
-        all_speaker_ids = []
-        for path in glob.iglob(f"{folder}/*/*.wav"):
-            path_parts = path.split('/')
-            speaker_id = path_parts[-2]
-            if speaker_id is None:
+        all_categories = {}
+        all_category_ids = []
+        for path in glob.iglob(f"{folder}/*.wav"):
+            path_parts = path.split('-')
+            category_id = path_parts[-2]
+            if category_id is None:
                 continue
 
-            if speaker_id not in all_speakers:
-                all_speakers[speaker_id] = []
-                all_speaker_ids.append(speaker_id)
+            if category_id not in all_categories:
+                all_categories[category_id] = []
+                all_category_ids.append(category_id)
 
-            all_speakers[speaker_id].append(path)
+            all_categories[category_id].append(path)
 
-        speakers = {}
+        categories = {}
         if config['label_limit'] == False:
-            speakers = all_speakers
+            categories = all_categories
         else:
-            for key in np.random.choice(all_speaker_ids, config['label_limit'], replace=False):
-                speakers[key] = all_speakers[key]
+            for key in np.random.choice(all_category_ids, config['label_limit'], replace=False):
+                categories[key] = all_categories[key]
 
-        data_distribution = [ (k, len(files)) for (k, files) in speakers.items()]
+        data_distribution = [ (k, len(files)) for (k, files) in categories.items()]
         total = np.sum([count for (_, count) in data_distribution])
         print(f"Total files: {total}")
         print(f"Total labels: {len(data_distribution)}")
 
         labels = {label: i for i, (label, _) in enumerate(data_distribution)}
 
-        for speaker_id, count in data_distribution:
+        for category_id, count in data_distribution:
             train_num = int(np.floor(count * train_pct / 100 ))
             dev_num = int(np.floor(count * dev_pct / 100 ))
             test_num = int(np.floor(count * test_pct / 100))
 
-            files = set(speakers[speaker_id])
-            sets[DS.TRAIN] = cls.rand_add_speaker_wavs(sets[DS.TRAIN], files, train_num, labels[speaker_id])
+            files = set(categories[category_id])
+            sets[DS.TRAIN] = cls.rand_add_category_wavs(sets[DS.TRAIN], files, train_num, labels[category_id])
 
             files = files - set(sets[DS.TRAIN].keys())
-            sets[DS.DEV] = cls.rand_add_speaker_wavs(sets[DS.DEV], files, dev_num, labels[speaker_id])
+            sets[DS.DEV] = cls.rand_add_category_wavs(sets[DS.DEV], files, dev_num, labels[category_id])
 
             files = files - set(sets[DS.DEV].keys())
-            sets[DS.TEST] = cls.rand_add_speaker_wavs(sets[DS.TEST], files, test_num, labels[speaker_id])
+            sets[DS.TEST] = cls.rand_add_category_wavs(sets[DS.TEST], files, test_num, labels[category_id])
 
         bg_noise_files = []
         print("labels are: ", labels)

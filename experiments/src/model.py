@@ -38,12 +38,15 @@ import torch.utils.data as data
 
 from .serializable_module import SerializableModule
 
-from .vgg import vgg11 
+from .vgg import vgg11, vgg11_bn
 
 def find_model(conf, n_labels):
     # TODO: refactor this
     if conf == 'vgg11':
         return vgg11(num_classes=n_labels)
+    if conf == 'vgg11_bn':
+        return vgg11_bn(num_classes=n_labels)
+
 
     config = find_config(conf)
     config["n_labels"] = n_labels
