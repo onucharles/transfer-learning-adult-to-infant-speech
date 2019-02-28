@@ -26,9 +26,9 @@ def build_data_loaders(config, splits):
 #            sampler=sampler)
     train= data.DataLoader(train_set, num_workers=8, batch_size=config["batch_size"], shuffle=True, drop_last=True)
     dev= data.DataLoader(dev_set,  num_workers=8, batch_size=min(len(dev_set),
-        16), shuffle=True)
+        1000), shuffle=False)
     test= data.DataLoader(test_set,num_workers=8,  batch_size=min(len(test_set),
-        16), shuffle=True)
+        1000), shuffle=False)
     return train, dev, test
 
 def build_config():
@@ -39,17 +39,18 @@ def build_config():
             'predictions_path': VOX_LOGGING_FOLDER ,
             'data_folder': VOX_DATA_FOLDER,
             'print_confusion_matrix': False,
-            'n_epochs': 32,
-            'lr': [0.001, 0.0001, 0.00001],
-            'schedule': [50, 50000],
-            'batch_size': 32,
+            'n_epochs': 250,
+            'lr': [0.01, 0.001, 0.0001, 0.00001],
+            'schedule': [25000, 50000, 75000],
+            'batch_size': 128,
             'weight_decay': 0.000001,
             'momentum': 0.9,
-            'label_limit': 50,
+            'label_limit': 200,
             'seed': 9,
-            'model_class': 'res8',
+            'model_class': 'vgg11_bn_red',
             'input_length': 48000, # let's use 3 secs for now as in vgg paper.
             'loss': 'hinge',
+            'timeshift_ms': 1000
             #'n_feature_maps': 128,
             #'use_dilation': False
             })

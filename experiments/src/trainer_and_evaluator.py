@@ -180,7 +180,9 @@ class TrainerAndEvaluator():
             if epoch_idx % self.dev_every == self.dev_every - 1:
                 print("Validation")
                 self.model.eval()
-                validation_accuracies= []
+                val_acc = 0
+                val_loss = 0
+                val_total_size = 0
                 self.reset_confusion_matrix()
                 with torch.no_grad():
                     for model_in, labels in self.dev_loader:
@@ -190,21 +192,25 @@ class TrainerAndEvaluator():
                         model_in = Variable(model_in, requires_grad=False)
                         scores = self.model(model_in)
                         labels = Variable(labels, requires_grad=False)
-                        loss = criterion(scores, labels)
+                        model_in_size = model_in.size(0)
+                        val_loss += criterion(scores, labels) * model_in_size
                         valid_scores = compute_eval(scores, labels)
-                        validation_accuracies.append(valid_scores.detach().cpu())
+                        # validation_accuracies.append(valid_scores.detach().cpu())
+                        val_acc += valid_scores * model_in_size
+                        val_total_size += model_in_size
                         self.update_confusion_matrix(scores, labels)
-                        self.report_f1_precision_recall('validation')
-                        print(f"validation accuracy. {valid_scores}, loss: {loss}")
-                        self.experiment.log_metric('validation_loss', loss.item(), step=self.step_no)
 
-                avg_dev_acc = np.mean(validation_accuracies)
-                self.print_confusion_matrix_results("Validation", avg_dev_acc)
+                # avg_dev_acc = np.mean(validation_accuracies)
+                val_acc /= val_total_size
+                val_loss /= val_total_size
+                print(f"validation accuracy: {val_acc}, loss: {val_loss}")
                 self.report_f1_precision_recall('validation')
+                self.print_confusion_matrix_results("Validation", val_acc)
 
-                self.valid_logs.append((self.step_no, avg_dev_acc, loss.item()))
-                self.experiment.log_metric('validation_accuracy', avg_dev_acc, step=self.step_no)
-                self.update_accuracy_and_save_model(avg_dev_acc)
+                self.valid_logs.append((self.step_no, val_acc, val_loss.item()))
+                self.experiment.log_metric('validation_accuracy', val_acc, step=self.step_no)
+                self.experiment.log_metric('validation_loss', val_loss.item(), step=self.step_no)
+                self.update_accuracy_and_save_model(val_acc)
 
         predictions = self.evaluate()
         self.dump_logs_and_predictions(predictions)

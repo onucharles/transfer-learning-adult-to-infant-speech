@@ -3,7 +3,7 @@ import torch.nn as nn
 
 __all__ = [
     'VGG', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
-    'vgg19_bn', 'vgg19',
+    'vgg19_bn', 'vgg19', 'vgg11_bn_red'
 ]
 
 
@@ -46,6 +46,23 @@ class VGG(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
+class VGG_Reduced(VGG):
+
+    def __init__(self, features, num_classes=1000, init_weights=True):
+        super(VGG_Reduced, self).__init__(features, num_classes, init_weights)
+        self.features = features
+        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
+        self.classifier = nn.Sequential(
+            nn.Linear(512 * 7 * 7, 2048),
+            nn.ReLU(True),
+            nn.Dropout(),
+            #nn.Linear(4096, 4096),
+            #nn.ReLU(True),
+            #nn.Dropout(),
+            nn.Linear(2048, num_classes),
+        )
+        if init_weights:
+            self._initialize_weights()
 
 def make_layers(cfg, batch_norm=False):
     layers = []
@@ -69,8 +86,14 @@ cfg = {
     'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
+    'R': [64, 'M', 128, 'M', 256, 256, 'M', 512, 'M', 512, 'M'],
 }
 
+def vgg11_bn_red(**kwargs):
+    """VGG reduced model (configuration "A") with batch normalization
+    """
+    model = VGG_Reduced(make_layers(cfg['R'], batch_norm=True), **kwargs)
+    return model
 
 def vgg11(**kwargs):
     """VGG 11-layer model (configuration "A")
