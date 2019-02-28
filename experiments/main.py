@@ -6,9 +6,10 @@ from chillanto_01_train_and_evaluate import train_and_evaluate as chill_train_ev
 from audioset_01_train_and_evaluate import train_and_evaluate as audioset_train_eval
 from vctk_train_and_evaluate import train_and_evaluate as vctk_train_eval
 from esc50_train_and_evaluate import train_and_evaluate as esc50_train_eval
+from sitw_train_and_evaluate import train_and_evaluate as sitw_train_eval
 
 # Transfer Learning
-from chillanto_speech_commands_02_transfer import model_transfer as chill_sc_transfer
+from chillanto_02_transfer import model_transfer as chill_transfer
 
 if __name__ == '__main__':
     fire.Fire()

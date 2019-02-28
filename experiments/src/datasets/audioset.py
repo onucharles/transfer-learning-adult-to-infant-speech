@@ -28,10 +28,7 @@ class AudioSetDataset(data.Dataset):
         self.audio_files = list([ d for (d, _) in data])
         self.set_type = set_type
         self.audio_labels = list([ l for (_, l) in data])
-        self.input_length = config["input_length"]
         self.n_dct = config["n_dct_filters"]
-        self.input_length = config["input_length"]
-        self.timeshift_ms = config["timeshift_ms"]
         self.filters = librosa.filters.dct(config["n_dct_filters"], config["n_mels"])
         self.n_mels = config["n_mels"]
         self.sampling_freq = config["sampling_freq"]
@@ -43,8 +40,6 @@ class AudioSetDataset(data.Dataset):
         """ NOTE: you must provide a `data_folder` """
         config = {}
         config["group_speakers_by_id"] = True
-        config["input_length"] = 8000
-        config["timeshift_ms"] = 100
         config["sampling_freq"] = 16000
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
@@ -56,16 +51,7 @@ class AudioSetDataset(data.Dataset):
 
         return dict(ChainMap(custom_config, config))
 
-    def _timeshift_audio(self, data):
-        shift = (self.sampling_freq * self.timeshift_ms) // 1000
-        shift = random.randint(-shift, shift)
-        a = -min(0, shift)
-        b = max(0, shift)
-        data = np.pad(data, (a, b), "constant")
-        return data[:len(data) - a] if a else data[b:]
-
     def preprocess(self, example, silence=False):
-        in_len = self.input_length
         example = (np.float32(example) - 128.) / 128.
         data = torch.from_numpy(example)
         return data
@@ -118,7 +104,6 @@ class AudioSetDataset(data.Dataset):
                 }
 
     def __getitem__(self, index):
-        print(self.audio_labels[index])
         return self.preprocess(self.audio_files[index]), self.audio_labels[index]
 
     def __len__(self):

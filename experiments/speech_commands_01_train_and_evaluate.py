@@ -15,7 +15,8 @@ def build_config():
             'batch_size': 64,
             'cache_size':32768,
             'weight_decay': 0.00001,
-            'dev_every': 1
+            'dev_every': 1,
+            'model_class': 'res8',
             })
 
     # Merge together the model, training and dataset configuration:

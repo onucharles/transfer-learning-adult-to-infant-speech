@@ -5,7 +5,7 @@ from src.tasks.train_and_evaluate import task_train_and_evaluate, task_config, s
 from src.training_helpers import set_seed
 def build_config():
     config = task_config({
-            'project': 'chillanto_train_and_evaluate',
+            'project': 'chillanto',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chillanto' ,
             'log_file_path': CHILLANTO_LOGGING_FOLDER ,
             'predictions_path': CHILLANTO_LOGGING_FOLDER ,
@@ -26,8 +26,8 @@ def build_config():
             "dev_pct": 5,
             "test_pct": 40,
             "sampling_freq": 8000,
-#            'model_class': 'res8',
-            'model_class': 'vgg11',
+            'model_class': 'res8',
+#            'model_class': 'vgg11',
             'timeshift_ms': 100,
             'use_nesterov': False,
             'seed': 3,

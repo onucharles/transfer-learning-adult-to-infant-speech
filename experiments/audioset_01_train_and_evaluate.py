@@ -26,9 +26,9 @@ def build_data_loaders(config, splits):
 #            sampler=sampler)
     train= data.DataLoader(train_set,  batch_size=config["batch_size"], shuffle=True, drop_last=True)
     dev= data.DataLoader(dev_set,  batch_size=min(len(dev_set),
-        16), shuffle=True)
+        64), shuffle=True)
     test= data.DataLoader(test_set, batch_size=min(len(test_set),
-        16), shuffle=True)
+        64), shuffle=True)
     return train, dev, test
 
 def build_config():
@@ -40,13 +40,13 @@ def build_config():
             'data_folder': AUDIOSET_DATA_FOLDER,
             'print_confusion_matrix': False,
             'n_epochs': 30,
-            'lr': [0.01, 0.001, 0.0001],
-            'schedule': [180000, 200000],
-            'batch_size': 64,
-            'model_class': 'vgg11_bn',
+            'lr': [0.001, 0.0001],
+            'schedule': [15000],
+            'batch_size': 32,
+            'model_class': 'res8',
             'weight_decay': 0.000001,
-            'input_length': 8000,
             'momentum': 0.9,
+            'loss': 'hinge',
             'seed': 9
             })
     # Merge together the model, training and dataset configuration:

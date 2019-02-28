@@ -6,7 +6,7 @@ import torch
 from torch.autograd import Variable
 from pathlib import Path
 from sklearn.externals import joblib
-from src.training_helpers import print_eval, set_seed, compute_eval, confusion_matrix, print_f1_confusion_matrix
+from src.training_helpers import print_eval, set_seed, compute_eval, confusion_matrix, print_f1_confusion_matrix, calc_f1_prec_recall
 
 
 class TrainerAndEvaluator():
@@ -70,9 +70,16 @@ class TrainerAndEvaluator():
         self.train_logs.append((self.step_no, train_score.item(), loss.item()))
         self.experiment.log_metric('train_loss', loss.item(), self.step_no)
 
-    def report_confusion_matrix(self, label, acc):
+    def print_confusion_matrix_results(self, label, acc):
         if self.print_confusion_matrix:
             print_f1_confusion_matrix(label, acc, self.conf_mat)
+
+    def report_f1_precision_recall(self, label):
+        if self.print_confusion_matrix:
+            f1, precision, recall = calc_f1_prec_recall(self.conf_mat)
+            self.experiment.log_metric(f'{label}_F1', f1)
+            self.experiment.log_metric(f'{label}_precision', precision)
+            self.experiment.log_metric(f'{label}_recall', recall)
 
     def update_confusion_matrix(self, scores, labels):
         if self.print_confusion_matrix:
@@ -118,7 +125,8 @@ class TrainerAndEvaluator():
 
         print("Testing Accuracy", acc)
         self.experiment.log_metric('test_accuracy', acc)
-        self.report_confusion_matrix("Testing", acc)
+        self.print_confusion_matrix_results("Testing", acc)
+        self.report_f1_precision_recall('test')
         return prediction_log
 
     def perform_training(self):
@@ -186,11 +194,13 @@ class TrainerAndEvaluator():
                         valid_scores = compute_eval(scores, labels)
                         validation_accuracies.append(valid_scores.detach().cpu())
                         self.update_confusion_matrix(scores, labels)
+                        self.report_f1_precision_recall('validation')
                         print(f"validation accuracy. {valid_scores}, loss: {loss}")
                         self.experiment.log_metric('validation_loss', loss.item(), step=self.step_no)
 
                 avg_dev_acc = np.mean(validation_accuracies)
-                self.report_confusion_matrix("Validation", avg_dev_acc)
+                self.print_confusion_matrix_results("Validation", avg_dev_acc)
+                self.report_f1_precision_recall('validation')
 
                 self.valid_logs.append((self.step_no, avg_dev_acc, loss.item()))
                 self.experiment.log_metric('validation_accuracy', avg_dev_acc, step=self.step_no)

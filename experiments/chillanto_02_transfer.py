@@ -17,7 +17,7 @@ params_to_load = ['conv0.weight', 'bn1.running_mean', 'bn1.running_var', 'bn1.nu
 
 def build_config():
     config = task_config({
-            'project': 'chillanto_speech_commands_transfer',
+            'project': 'chillanto',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chill_trans_sc',
             'log_file_path': CHILLANTO_LOGGING_FOLDER,
             'predictions_path': CHILLANTO_LOGGING_FOLDER,
@@ -55,5 +55,6 @@ def model_transfer(source_model_path):
     data_loaders = build_data_loaders(config, ChillantoDataset, chillanto_sampler)
     params = setup_task(config, data_loaders, 4)
     load_weights(params['model'], source_model_path, params_to_load)
-    params['source_model_path'] = str(source_model_path)
+    experiment = params['experiment']
+    experiment.log_parameters({ 'source_model': f'm:{source_model_path}' })
     task_train_and_evaluate(params)

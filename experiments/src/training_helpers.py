@@ -34,12 +34,18 @@ def confusion_matrix(scores, labels, classes=None):
 def print_eval(name, eval_score, loss, lr,  end="\n"):
     print("{0}: {1}, loss: {2}, learning_rate: {3}".format(name, eval_score, loss.item(), lr))
 
+def calc_f1_prec_recall(conf_mat, pos_class=3):
+    tp, tn, fp, fn, p, n = evalutils.read_conf_matrix(conf_mat, pos_class=3)
+    f1, precision, recall = evalutils.f1_prec_recall(tp, tn, fp, fn, p, n)
+    return f1, precision, recall
+
 
 def print_f1_confusion_matrix(name, avg_acc, conf_mat):
     tp, tn, fp, fn, p, n = evalutils.read_conf_matrix(conf_mat, pos_class=3)
     f1, precision, recall = evalutils.f1_prec_recall(tp, tn, fp, fn, p, n)
     print("Confusion matrix: \n {}".format(conf_mat))
     print("{} accuracy: {}\tF1 = {}\tPrecision={}\tRecall={}".format(name, avg_acc, f1, precision, recall))
+    return f1, precision, recall
 
 
 def set_seed(config):
