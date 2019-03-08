@@ -37,7 +37,7 @@ def chillanto_sampler(train_set, config):
 
 
 
-class ChillantoDataset(data.Dataset):
+class ChillantoNoiseMixDataset(data.Dataset):
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
     def __init__(self, data, set_type, config):
@@ -63,6 +63,7 @@ class ChillantoDataset(data.Dataset):
         self.sampling_freq = config["sampling_freq"]
         self.window_size_ms = config["window_size_ms"]
         self.frame_shift_ms = config["frame_shift_ms"]
+        self.noise_pct = config['noise_pct']
 
     @staticmethod
     def default_config(custom):
@@ -86,6 +87,7 @@ class ChillantoDataset(data.Dataset):
         config["n_feature_maps"] = 45
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
+        config["noise_pct"] = 0.
         config["loss"] = "hinge"
         return ChainMap(custom,config)
 
@@ -123,9 +125,13 @@ class ChillantoDataset(data.Dataset):
         if self.set_type == DatasetType.TRAIN:
             data = self._timeshift_audio(data)
 
-        if random.random() < self.noise_prob or silence:
-            a = random.random() * 0.1
-            data = np.clip(a * bg_noise + data, -1, 1)
+
+        bg_noise = np.random.choice(self.bg_noise_audio)
+        noise_range = random.randint(0, len(bg_noise) - in_len - 1)
+        noise_sample = bg_noise[noise_range:noise_range + in_len]
+        # mix the noise into the data:
+        data = self.noise_pct * noise_sample + data
+
         data = torch.from_numpy(
             preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
         )
@@ -195,10 +201,6 @@ class ChillantoDataset(data.Dataset):
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
         datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg), cls(sets[1], DatasetType.DEV, test_cfg), cls(sets[2], DatasetType.TEST, test_cfg))
-        #from collections import Counter
-        #print(Counter([ (k.split('/')[-1].split('_')[0]) for (k, v) in sets[0].items()]))
-        #print(Counter([ (k.split('/')[-1].split('_')[0]) for (k, v) in sets[1].items()]))
-        #print(Counter([ (k.split('/')[-1].split('_')[0]) for (k, v) in sets[2].items()]))
         return datasets
 
     @staticmethod

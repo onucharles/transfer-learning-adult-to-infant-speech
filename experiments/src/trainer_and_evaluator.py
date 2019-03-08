@@ -53,6 +53,9 @@ class TrainerAndEvaluator():
         self.model = torch.nn.DataParallel(model)
         #self.model = model
 
+    def set_best_model(self):
+        self.best_model = self.model
+
     def setup_paths(self, config, experiment):
         model_path = config['model_path'] / experiment.id
         predictions_path = config['predictions_path'] / experiment.id
@@ -94,7 +97,7 @@ class TrainerAndEvaluator():
         if avg_acc > self.max_acc:
             print("saving best model...")
             self.max_acc = avg_acc
-            self.best_model = self.model
+            self.set_best_model()
             torch.save(self.model.state_dict(), f"{self.model_path}/{self.max_acc}.mdl")
 
     def dump_logs_and_predictions(self, predictions):
@@ -110,6 +113,8 @@ class TrainerAndEvaluator():
         total = 0
         self.reset_confusion_matrix()
         prediction_log = []
+        torch.save(self.best_model.state_dict(), f"{self.model_path}/_best.mdl")
+        self.best_model.eval()
         with torch.no_grad():
             for model_in, labels in self.test_loader:
                 model_in = model_in.to(self.device)

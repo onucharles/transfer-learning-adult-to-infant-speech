@@ -11,5 +11,8 @@ from sitw_train_and_evaluate import train_and_evaluate as sitw_train_eval
 # Transfer Learning
 from chillanto_02_transfer import model_transfer as chill_transfer
 
+# Noise Experiments
+from noise_evaluate import noise_evaluate as noise_eval
+
 if __name__ == '__main__':
     fire.Fire()
