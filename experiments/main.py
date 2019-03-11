@@ -14,5 +14,7 @@ from chillanto_02_transfer import model_transfer as chill_transfer
 # Noise Experiments
 from noise_evaluate import noise_evaluate as noise_eval
 
+# Debug Experiments
+from chillanto_sc_debug import sc_debug as sc_debug
 if __name__ == '__main__':
     fire.Fire()

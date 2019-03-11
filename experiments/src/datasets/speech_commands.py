@@ -79,7 +79,6 @@ class SpeechCommandsDataset(data.Dataset):
         config["n_labels"] = len(config["wanted_words"]) + 2
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
-        config["loss"] = "hinge"
 
         return dict(ChainMap(custom_config, config))
 

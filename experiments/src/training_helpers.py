@@ -92,13 +92,16 @@ def load_weights(model, state_dict_path, params_to_load=[]):
         params_to_load - list of parameter names to be loaded.
     """
     print("loading weights from model at '{0}'.\nParameters to load are: {1}".format(state_dict_path, params_to_load))
-    state_dict = torch.load(state_dict_path)
+    state_dict = torch.load(state_dict_path, map_location='cuda:0')
 
     desired_state_dict = {}
+
     for name, item in state_dict.items():
+        # remove the module. prefix that occurs with nn.data.Parallel
+        name = name.replace('module.','')
         if name in params_to_load:
             desired_state_dict[name] = item
-
+    print('applied', desired_state_dict.keys())
     model.load_state_dict(desired_state_dict, strict=False)
-
+    return model
 

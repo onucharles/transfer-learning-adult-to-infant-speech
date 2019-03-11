@@ -20,13 +20,17 @@ class TrainerAndEvaluator():
 
         self.epoch_no = None
         self.step_no = None
-        self.max_acc = None
+        self.max_eval_metric = None
 
         self.n_epochs = config['n_epochs']
         self.schedule = config['schedule']
         self.n_labels = config['n_labels']
         self.dev_every = config['dev_every']
         self.print_confusion_matrix = config['print_confusion_matrix']
+
+        self.eval_metric = 'acc'
+        if self.print_confusion_matrix:
+            self.eval_metric = 'f1'
 
         self.setup_logs()
         self.setup_paths(config, self.experiment)
@@ -50,8 +54,10 @@ class TrainerAndEvaluator():
     def setup_model(self, task_params):
         model = task_params['model']
         model.to(self.device)
-        self.model = torch.nn.DataParallel(model)
-        #self.model = model
+        # trying for Speech commands to see if it makes a difference on
+        # transfer:
+        self.model = model
+        #self.model = torch.nn.DataParallel(model)
 
     def set_best_model(self):
         self.best_model = self.model
@@ -78,11 +84,13 @@ class TrainerAndEvaluator():
             print_f1_confusion_matrix(label, acc, self.conf_mat)
 
     def report_f1_precision_recall(self, label):
+        f1 = None
         if self.print_confusion_matrix:
             f1, precision, recall = calc_f1_prec_recall(self.conf_mat)
             self.experiment.log_metric(f'{label}_F1', f1)
             self.experiment.log_metric(f'{label}_precision', precision)
             self.experiment.log_metric(f'{label}_recall', recall)
+        return f1
 
     def update_confusion_matrix(self, scores, labels):
         if self.print_confusion_matrix:
@@ -92,13 +100,13 @@ class TrainerAndEvaluator():
         if self.print_confusion_matrix:
             self.conf_mat = np.zeros((self.n_labels, self.n_labels))
 
-    def update_accuracy_and_save_model(self, avg_acc):
+    def update_eval_metric_and_save_model(self, metric):
         # save best model
-        if avg_acc > self.max_acc:
+        if metric > self.max_eval_metric:
             print("saving best model...")
-            self.max_acc = avg_acc
+            self.max_eval_metric = metric
             self.set_best_model()
-            torch.save(self.model.state_dict(), f"{self.model_path}/{self.max_acc}.mdl")
+            torch.save(self.model.state_dict(),f"{self.model_path}/{self.eval_metric}.{self.max_eval_metric}.mdl")
 
     def dump_logs_and_predictions(self, predictions):
         joblib.dump((self.train_logs, self.valid_logs), self.log_file_path)
@@ -137,7 +145,7 @@ class TrainerAndEvaluator():
     def perform_training(self):
         self.epoch_no = 0
         self.step_no = 0
-        self.max_acc = 0
+        self.max_eval_metric = 0
 
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][0],
                 nesterov=self.config["use_nesterov"],
@@ -193,13 +201,12 @@ class TrainerAndEvaluator():
                     for model_in, labels in self.dev_loader:
                         model_in = model_in.to(self.device)
                         labels = labels.to(self.device)
-
                         model_in = Variable(model_in, requires_grad=False)
                         scores = self.model(model_in)
                         labels = Variable(labels, requires_grad=False)
                         model_in_size = model_in.size(0)
                         val_loss += criterion(scores, labels) * model_in_size
-                        valid_scores = compute_eval(scores, labels)
+                        valid_scores = compute_eval(scores.detach().cpu(), labels.detach().cpu())
                         # validation_accuracies.append(valid_scores.detach().cpu())
                         val_acc += valid_scores * model_in_size
                         val_total_size += model_in_size
@@ -209,13 +216,17 @@ class TrainerAndEvaluator():
                 val_acc /= val_total_size
                 val_loss /= val_total_size
                 print(f"validation accuracy: {val_acc}, loss: {val_loss}")
-                self.report_f1_precision_recall('validation')
+                f1 = self.report_f1_precision_recall('validation')
                 self.print_confusion_matrix_results("Validation", val_acc)
 
                 self.valid_logs.append((self.step_no, val_acc, val_loss.item()))
                 self.experiment.log_metric('validation_accuracy', val_acc, step=self.step_no)
                 self.experiment.log_metric('validation_loss', val_loss.item(), step=self.step_no)
-                self.update_accuracy_and_save_model(val_acc)
+
+                if self.eval_metric == 'f1':
+                    self.update_eval_metric_and_save_model(f1)
+                else:
+                    self.update_eval_metric_and_save_model(val_acc)
 
         predictions = self.evaluate()
         self.dump_logs_and_predictions(predictions)
