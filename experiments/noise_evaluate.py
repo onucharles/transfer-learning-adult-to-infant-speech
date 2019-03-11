@@ -2,12 +2,7 @@ from pathlib import Path
 from collections import ChainMap
 from src.settings import CHILLANTO_DATA_FOLDER, CHILLANTO_LOGGING_FOLDER, CHILLANTO_MODELS_FOLDER, CHILLANTO_NOISE_DATA_FOLDER
 from src.datasets.chillanto_noise_mix import ChillantoNoiseMixDataset, chillanto_sampler
-from src.training_helpers import load_weights
 from src.training_helpers import set_seed
-
-from src.trainer_and_evaluator import TrainerAndEvaluator
-from src.tasks.train_and_evaluate import task_train_and_evaluate, task_config, setup_task, build_data_loaders
-
 from collections import ChainMap
 import numpy as np
 import torch
@@ -50,7 +45,7 @@ def setup_task(config, n_labels):
         'config': config,
     }
 
-def build_config():
+def build_config(seed):
     config = task_config({
             'project': 'chillanto-noise',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chillanto_noise' ,
@@ -71,43 +66,49 @@ def build_config():
             'n_labels': 4,
             'schedule': [],
             'dev_every': None,
-            'seed': 3,
+            'seed': seed,
             'cache_size':32768,
             })
 
     # Merge together the model, training and dataset configuration:
     return dict(ChainMap(ChillantoNoiseMixDataset.default_config(config), config))
 
+def set_noise_files(noise_type):
+    if noise_type == 'gaussian':
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'gaussian_0_1_noise.wav']
+    if noise_type == 'dog_bark':
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'dog_bark' / f'{fn}.wav' for fn in [4, 15, 68, 71, 78, 97, 139, 160, 163, 164]]
+    if noise_type == 'children_playing':
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'children_playing' / f'{fn}.wav' for fn in [6, 32, 44, 54, 56, 67, 87, 134, 152, 174]]
+    if noise_type == 'siren':
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'siren' / f'{fn}.wav' for fn in [0, 3, 18, 27, 36, 43, 50, 60, 90, 92]]
 
-def xxnoise_evaluate(label, tag, source_model_path):
-    config = build_config()
+def load_model(model, source_model_path):
+    state_dict = torch.load(source_model_path)
+    desired_model_params = {}
+    for (name, val) in state_dict.items():
+        # remove the module. prefix that occurs with nn.data.Parallel
+        name = name.replace('module.','')
+        desired_model_params[name] = val
+    model.load_state_dict(desired_model_params)
+    return model
+
+def noise_evaluate(noise_type, tag, source_model_path, seed=3, noise_range=[0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]):
+
+    config = build_config(seed)
+    config['noise_type'] = noise_type
     set_seed(config)
-    data_loaders = build_data_loaders(config, ChillantoNoiseMixDataset, chillanto_sampler)
-    params = setup_task(config, data_loaders, 4)
-    experiment = params['experiment']
-    te = TrainerAndEvaluator(params)
-    te.model.load_state_dict(torch.load(source_model_path))
-    te.set_best_model()
-    te.evaluate()
 
-def noise_evaluate(label, tag, source_model_path):
-
-    config = build_config()
-    config['label'] = label
-    set_seed(config)
-    config['bg_noise_files']= [ CHILLANTO_NOISE_DATA_FOLDER / 'gaussian_0_1_noise.wav']
-
-
+    config['bg_noise_files']= set_noise_files(noise_type)
+    print("noise!", noise_type, config['bg_noise_files'])
     params = setup_task(config, 4)
     experiment = params['experiment']
     experiment.add_tag(tag)
-    noise_range = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     for pct in noise_range:
-        config['noise_pct'] = pct
+        config['noise_pct'] = float(pct)
+        params['model'] = load_model(params['model'], source_model_path)
         experiment.log_metric('noise_pct', pct)
         test_data_loader = build_test_data_loader(config, ChillantoNoiseMixDataset, chillanto_sampler)
         te = NoiseEvaluator(params)
         te.test_loader = test_data_loader
-        state_dict = torch.load(source_model_path)
-        te.model.load_state_dict(state_dict)
         te.evaluate()

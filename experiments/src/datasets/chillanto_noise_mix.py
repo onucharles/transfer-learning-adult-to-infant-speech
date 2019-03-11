@@ -34,9 +34,6 @@ def chillanto_sampler(train_set, config):
 
     return sampler
 
-
-
-
 class ChillantoNoiseMixDataset(data.Dataset):
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
@@ -47,7 +44,10 @@ class ChillantoNoiseMixDataset(data.Dataset):
         self.audio_labels = list(data.values())
         self.input_length = config["input_length"]
         config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
-        self.bg_noise_audio = [librosa.core.load(file, sr=self.input_length)[0] for file in config["bg_noise_files"]]
+        noise_samples = [librosa.core.load(file, sr=self.input_length) for file in config["bg_noise_files"]]
+
+        #noise_samples = [librosa.load(file) for file in ['/network/data1/maloneyj/noise/siren/60.wav']]
+        self.bg_noise_audio = list([librosa.resample(sample, freq, config['sampling_freq']) for idx, (sample, freq) in enumerate(noise_samples)])
         self.unknown_prob = config["unknown_prob"]
         self.silence_prob = config["silence_prob"]
         self.noise_prob = config["noise_prob"]
@@ -81,7 +81,7 @@ class ChillantoNoiseMixDataset(data.Dataset):
         config["test_pct"] = 10
         config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
         config["data_folder"] = ""#""/mnt/hdd/Datasets/speech-commands-8k-16bit"
-        config["sampling_freq"] = 16000
+        config["sampling_freq"] = 8000
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
         config["n_feature_maps"] = 45
@@ -91,51 +91,22 @@ class ChillantoNoiseMixDataset(data.Dataset):
         config["loss"] = "hinge"
         return ChainMap(custom,config)
 
-    def _timeshift_audio(self, data):
-        shift = (self.sampling_freq * self.timeshift_ms) // 1000
-        shift = random.randint(-shift, shift)
-        a = -min(0, shift)
-        b = max(0, shift)
-        data = np.pad(data, (a, b), "constant")
-        return data[:len(data) - a] if a else data[b:]
-
     def preprocess(self, example, silence=False):
-        if silence:
-            example = "__silence__"
-        if random.random() < 0.7:
-            try:
-                return self._audio_cache[example]
-            except KeyError:
-                pass
         in_len = self.input_length
-        if self.bg_noise_audio:
-            bg_noise = random.choice(self.bg_noise_audio)
-            a = random.randint(0, len(bg_noise) - in_len - 1)
-            bg_noise = bg_noise[a:a + in_len]
-        else:
-            bg_noise = np.zeros(in_len)
-
-        if silence:
-            data = np.zeros(in_len, dtype=np.float32)
-        else:
-            file_data = self._file_cache.get(example)
-            data = librosa.core.load(example, sr=self.sampling_freq)[0] if file_data is None else file_data
-            self._file_cache[example] = data
+        data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
-        if self.set_type == DatasetType.TRAIN:
-            data = self._timeshift_audio(data)
-
 
         bg_noise = np.random.choice(self.bg_noise_audio)
-        noise_range = random.randint(0, len(bg_noise) - in_len - 1)
-        noise_sample = bg_noise[noise_range:noise_range + in_len]
+        bg_noise = np.pad(bg_noise, (0, max(0, in_len - len(bg_noise))), "constant")
+        noise_sample = bg_noise[:in_len]
+        #noise_range = random.randint(0, len(bg_noise) - in_len - 1)
+        #noise_sample = bg_noise[noise_range:noise_range + in_len]
         # mix the noise into the data:
-        data = self.noise_pct * noise_sample + data
+        data = self.noise_pct * noise_sample[:in_len] + data[:in_len]
 
         data = torch.from_numpy(
             preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
         )
-        self._audio_cache[example] = data
         return data
 
     @classmethod

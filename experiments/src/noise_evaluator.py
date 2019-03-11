@@ -48,7 +48,8 @@ class NoiseEvaluator():
     def setup_model(self, task_params):
         model = task_params['model']
         model.to(self.device)
-        self.model = torch.nn.DataParallel(model)
+        #self.model = torch.nn.DataParallel(model)
+        self.model = model
 
     def setup_paths(self, config, experiment):
         model_path = config['model_path'] / experiment.id
