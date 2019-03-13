@@ -1,7 +1,7 @@
 # configuration parameters for classical models
 
 c_parameters = {
-        'mode': 'model_selection',   # 'train_eval'
+        'mode': 'train_eval', # 'model_selection' or 'train_eval'
 
         'svm_kernel': 'rbf', # 'polynomial'
 
@@ -42,6 +42,10 @@ c_parameters = {
         'svm_train_params': {
             'C': 10,
             'gamma': 1e-5
-        }
+        },
+
+        'seed': 5,
+
+        'log_to_comet': True
 
 }

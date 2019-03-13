@@ -6,9 +6,6 @@ Utilities for training classical models.
 from sklearn.metrics import recall_score, make_scorer, precision_score, f1_score, accuracy_score
 import time
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from utils import evalutils
-from sklearn import metrics
-import numpy as np
 
 def train_eval(X_train, y_train, X_test, y_test, pipeline):
 
@@ -18,14 +15,6 @@ def train_eval(X_train, y_train, X_test, y_test, pipeline):
     # evaluate
     y_pred_proba = pipeline.predict_proba(X_test)
     y_pred = pipeline.predict(X_test)
-
-    # compute and print metrics. acc, precision, recall, specificity, f1
-    conf_mat = metrics.confusion_matrix(y_test, y_pred, labels=np.arange(4))    # TODO remove this hard number '4'
-    tp, tn, fp, fn, p, n = evalutils.read_conf_matrix(conf_mat, pos_class=3)
-    f1, precision, recall = evalutils.f1_prec_recall(tp, tn, fp, fn, p, n)
-    avg_acc = (tp + tn) / (tp + tn + fp + fn)
-    print("Confusion matrix: {}".format(conf_mat))
-    print("{} accuracy: {}\tF1 = {}\tPrecision={}\tRecall={}".format('SVM', avg_acc, f1, precision, recall))
 
     return pipeline, y_test, y_pred, y_pred_proba
 
