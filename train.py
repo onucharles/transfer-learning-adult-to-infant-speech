@@ -342,7 +342,9 @@ def save_embeddings(config, model=None, test_loader=None):
     n_labels = config["n_labels"]
     classes = np.arange(n_labels)
     if not test_loader:
-        _, _, test_set = mod.SpeechDataset.splits(config)
+        train_set, val_set, test_set = mod.SpeechDataset.splits(config)
+        train_loader = data.DataLoader(train_set, batch_size=min(len(train_set), 1))
+        val_loader = data.DataLoader(val_set, batch_size=min(len(val_set), 1))
         test_loader = data.DataLoader(test_set, batch_size=min(len(test_set), 1))
     if not config["no_cuda"]:
         torch.cuda.set_device(config["gpu_no"])
@@ -354,24 +356,27 @@ def save_embeddings(config, model=None, test_loader=None):
         model.cuda()
     model.eval()
 
-    embeddings_list = []
-    labels_list = []
-    for model_in, labels in test_loader:
-        model_in = Variable(model_in, requires_grad=False)
-        if not config["no_cuda"]:
-            model_in = model_in.cuda()
-            labels = labels.cuda()
-        labels = Variable(labels, requires_grad=False).numpy()
-        embedding = model.get_embedding(model_in).detach().numpy().flatten()
-        embeddings_list.append(embedding)
-        labels_list.append(int(labels))
+    loader_names = ['train', 'val', 'test']  # order must be same as for loop below.
+    loaders = [train_loader, val_loader, test_loader]
+    for loader_name, cur_loader in zip(loader_names, loaders):
+        embeddings_list = []
+        labels_list = []
+        for model_in, labels in cur_loader:
+            model_in = Variable(model_in, requires_grad=False)
+            if not config["no_cuda"]:
+                model_in = model_in.cuda()
+                labels = labels.cuda()
+            labels = Variable(labels, requires_grad=False).numpy()
+            embedding = model.get_embedding(model_in).detach().numpy().flatten()
+            embeddings_list.append(embedding)
+            labels_list.append(int(labels))
 
-        # print('embedding dim {0} and labels dim {1}'.format(embedding.shape, labels.shape))
-
-    embeddings = np.array(embeddings_list)
-    labels = np.array(labels_list)
-    print('embedding shape is {0} and labels shape is {1}'.format(embeddings.shape, labels.shape))
-    joblib.dump((embeddings, labels), '/mnt/hdd/Dropbox (NRP)/paper/tsne_data/output_embeddings_transfer.pkl')
+        embeddings = np.array(embeddings_list)
+        labels = np.array(labels_list)
+        print('embedding shape is {0} and labels shape is {1}'.format(embeddings.shape, labels.shape))
+        embedding_file_path = config['exp_dir'] + 'output_embeddings_' + loader_name + '.pkl'
+        joblib.dump((embeddings, labels), embedding_file_path)
+        print('Successfully wrote ' + loader_name + ' embedding to: ' + embedding_file_path)
 
 
 def main():
@@ -388,6 +393,7 @@ def main():
                        'conv4.weight', 'bn5.running_mean', 'bn5.running_var', 'bn5.num_batches_tracked',
                        'conv5.weight', 'bn6.running_mean', 'bn6.running_var', 'bn6.num_batches_tracked',
                        'conv6.weight']
+
     #params_to_update = ['output.weight', 'output.bias']
     global_config = dict(no_cuda=False, n_epochs=26, lr=[0.001], schedule=[np.inf], batch_size=64, dev_every=10,
         seed=11, use_nesterov=False, input_file="", gpu_no=1, cache_size=32768, momentum=0.9, weight_decay=0.00001,
