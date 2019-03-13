@@ -10,15 +10,18 @@ from src.settings import MODEL_CLASS
 from src.model import find_model
 from src.trainer_and_evaluator import TrainerAndEvaluator
 
-def build_data_loaders(config, dataset_class, sampler_func):
+def build_data_loaders(config, dataset_class, sampler_func=None):
     train_set, dev_set, test_set = dataset_class.splits(config)
 
     print("training set: ", len(train_set))
     print("dev set", len(dev_set))
     print("test set", len(test_set))
 
-    sampler = sampler_func(train_set, config)
-    train= data.DataLoader(train_set, num_workers=4, batch_size=config["batch_size"], shuffle=False, drop_last=True, sampler=sampler)
+    if sampler_func is None:
+        train= data.DataLoader(train_set, num_workers=4, batch_size=config["batch_size"], shuffle=True, drop_last=True)
+    else:
+        sampler = sampler_func(train_set, config)
+        train= data.DataLoader(train_set, num_workers=4, batch_size=config["batch_size"], shuffle=False, drop_last=True, sampler=sampler)
     dev= data.DataLoader(dev_set, num_workers=4, batch_size=1000)
     test= data.DataLoader(test_set,  num_workers=4,batch_size=1000)
     return train, dev, test

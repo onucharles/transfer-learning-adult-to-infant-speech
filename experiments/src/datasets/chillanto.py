@@ -68,13 +68,13 @@ class ChillantoDataset(data.Dataset):
     def default_config(custom):
         config = {}
         config["group_speakers_by_id"] = True
-        config["silence_prob"] = 0.1
-        config["noise_prob"] = 0.8
+        config["silence_prob"] = 0.
+        config["noise_prob"] = 0.
         config["input_length"] = 8000
         config["timeshift_ms"] = 100
         config["cache_size"] =32768
         config["seed"] = 11
-        config["unknown_prob"] = 0.1
+        config["unknown_prob"] = 0.
         config["train_pct"] = 80
         config["dev_pct"] = 10
         config["test_pct"] = 10

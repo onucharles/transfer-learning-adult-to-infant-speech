@@ -17,21 +17,26 @@ import torch.utils.data as data
 
 from .manage_audio import preprocess_audio
 from .simple_cache import SimpleCache
-
-class DatasetType(Enum):
-    TRAIN = 0
-    DEV = 1
-    TEST = 2
-
-def speech_commands_sampler(train_set, config):
-    sample_weights = torch.tensor(np.zeros(len(train_set)) + (1 / config['n_labels']))
-    return torch.utils.data.sampler.WeightedRandomSampler(sample_weights, len(train_set))
+from .dataset_type import DatasetType
 
 
-class SpeechCommandsDataset(data.Dataset):
+def chillanto_sampler(train_set, config):
+    # TODO fix this turkey
+    class_prob = [0, 0, 0.76, 0.24]
+    sample_weights = []
+
+    for i in range(len(train_set)):
+        _, label = train_set[i]
+        sample_weights.append(1 / class_prob[label])
+
+    sample_weights = torch.Tensor(sample_weights)
+    sampler = torch.utils.data.sampler.WeightedRandomSampler(sample_weights, len(train_set))
+
+    return sampler
+
+class ChillantoNoiseMixDataset(data.Dataset):
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
-
     def __init__(self, data, set_type, config):
         super().__init__()
         self.audio_files = list(data.keys())
@@ -39,7 +44,10 @@ class SpeechCommandsDataset(data.Dataset):
         self.audio_labels = list(data.values())
         self.input_length = config["input_length"]
         config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
-        self.bg_noise_audio = [librosa.core.load(file, sr=self.input_length)[0] for file in config["bg_noise_files"]]
+        noise_samples = [librosa.core.load(file, sr=self.input_length) for file in config["bg_noise_files"]]
+
+        #noise_samples = [librosa.load(file) for file in ['/network/data1/maloneyj/noise/siren/60.wav']]
+        self.bg_noise_audio = list([librosa.resample(sample, freq, config['sampling_freq']) for idx, (sample, freq) in enumerate(noise_samples)])
         self.unknown_prob = config["unknown_prob"]
         self.silence_prob = config["silence_prob"]
         self.noise_prob = config["noise_prob"]
@@ -55,74 +63,50 @@ class SpeechCommandsDataset(data.Dataset):
         self.sampling_freq = config["sampling_freq"]
         self.window_size_ms = config["window_size_ms"]
         self.frame_shift_ms = config["frame_shift_ms"]
+        self.noise_pct = config['noise_pct']
 
     @staticmethod
-    def default_config(custom_config={}):
-        """ NOTE: you must provide a `data_folder` """
-
+    def default_config(custom):
         config = {}
         config["group_speakers_by_id"] = True
-        config["silence_prob"] = 0.1
-        config["noise_prob"] = 0.8
-        config["unknown_prob"] = 0.1
+        config["silence_prob"] = 0.
+        config["noise_prob"] = 0.
         config["input_length"] = 8000
         config["timeshift_ms"] = 100
-        config["train_pct"] = 80
         config["cache_size"] =32768
+        config["seed"] = 11
+        config["unknown_prob"] = 0.
+        config["train_pct"] = 80
         config["dev_pct"] = 10
         config["test_pct"] = 10
+        config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
+        config["data_folder"] = ""#""/mnt/hdd/Datasets/speech-commands-8k-16bit"
         config["sampling_freq"] = 8000
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
-        # add Unknown and Silence
-        config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
-        config["n_labels"] = len(config["wanted_words"]) + 2
+        config["n_feature_maps"] = 45
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
-
-        return dict(ChainMap(custom_config, config))
-
-    def _timeshift_audio(self, data):
-        shift = (self.sampling_freq * self.timeshift_ms) // 1000
-        shift = random.randint(-shift, shift)
-        a = -min(0, shift)
-        b = max(0, shift)
-        data = np.pad(data, (a, b), "constant")
-        return data[:len(data) - a] if a else data[b:]
+        config["noise_pct"] = 0.
+        config["loss"] = "hinge"
+        return ChainMap(custom,config)
 
     def preprocess(self, example, silence=False):
-        if silence:
-            example = "__silence__"
-        if random.random() < 0.7:
-            try:
-                return self._audio_cache[example]
-            except KeyError:
-                pass
         in_len = self.input_length
-        if self.bg_noise_audio:
-            bg_noise = random.choice(self.bg_noise_audio)
-            a = random.randint(0, len(bg_noise) - in_len - 1)
-            bg_noise = bg_noise[a:a + in_len]
-        else:
-            bg_noise = np.zeros(in_len)
-
-        if silence:
-            data = np.zeros(in_len, dtype=np.float32)
-        else:
-            file_data = self._file_cache.get(example)
-            data = librosa.core.load(example, sr=self.sampling_freq)[0] if file_data is None else file_data
-            self._file_cache[example] = data
+        data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
-        if self.set_type == DatasetType.TRAIN:
-            data = self._timeshift_audio(data)
 
-        if random.random() < self.noise_prob or silence:
-            a = random.random() * 0.1
-            data = np.clip(a * bg_noise + data, -1, 1)
+        bg_noise = np.random.choice(self.bg_noise_audio)
+        bg_noise = np.pad(bg_noise, (0, max(0, in_len - len(bg_noise))), "constant")
+        noise_sample = bg_noise[:in_len]
+        #noise_range = random.randint(0, len(bg_noise) - in_len - 1)
+        #noise_sample = bg_noise[noise_range:noise_range + in_len]
+        # mix the noise into the data:
+        data = self.noise_pct * noise_sample[:in_len] + data[:in_len]
+
         data = torch.from_numpy(
             preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
         )
-        self._audio_cache[example] = data
         return data
 
     @classmethod
@@ -187,8 +171,7 @@ class SpeechCommandsDataset(data.Dataset):
         print("labels are: ", words)
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
-        datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg), cls(sets[1], DatasetType.DEV, test_cfg),
-                cls(sets[2], DatasetType.TEST, test_cfg))
+        datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg), cls(sets[1], DatasetType.DEV, test_cfg), cls(sets[2], DatasetType.TEST, test_cfg))
         return datasets
 
     @staticmethod
@@ -217,5 +200,3 @@ class SpeechCommandsDataset(data.Dataset):
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence
-
-

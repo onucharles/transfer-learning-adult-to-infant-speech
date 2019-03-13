@@ -42,7 +42,7 @@ def build_config():
             'n_epochs': 30,
             'lr': [0.001, 0.0001],
             'schedule': [15000],
-            'batch_size': 32,
+            'batch_size': 64,
             'model_class': 'res8',
             'weight_decay': 0.000001,
             'momentum': 0.9,
