@@ -23,8 +23,16 @@ import random
 def prepare_experiment(config):
     """ Sets up folders where all experiment files will be saved to.
     """
+    if not config['log_experiment']:
+        return config
+
+    experiment = Experiment(api_key="w7QuiECYXbNiOozveTpjc9uPg",
+                        project_name="chillanto", workspace="co-jl-transfer")
+    experiment.add_tag('svm')
+    exp_id = experiment.id
+
     # create unique sub-folder for this experiment
-    exp_dir = config['output_folder'] + '/' + current_datetime() + '/'
+    exp_dir = config['output_folder'] + '/' + exp_id + '/'
     create_folder(exp_dir)
     print('Experiment files will be saved to: ', exp_dir)
 
@@ -36,17 +44,38 @@ def prepare_experiment(config):
     save_json(dict(config), config_path)
     print('Saved experiment parameters to: ', config_path)
 
-    if config['log_to_comet']:
-        experiment = Experiment(api_key="w7QuiECYXbNiOozveTpjc9uPg",
-                            project_name="chillanto-svm", workspace="co-jl-transfer")
-        experiment.log_parameters(dict(config))
-        config['experiment'] = experiment
+    experiment.log_parameters(dict(config))
+    config['experiment'] = experiment
 
     return config
 
 def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
+
+def print_metrics_and_log(y_true, y_pred, config):
+    """
+    Print evaluation metrics and log to comet
+    """
+    # compute and print metrics. acc, precision, recall, specificity, f1
+    conf_mat = metrics.confusion_matrix(y_true, y_pred, labels=np.arange(4))  # TODO remove this hard number '4'
+    tp, tn, fp, fn, p, n = evalutils.read_conf_matrix(conf_mat, pos_class=3)
+    f1, precision, recall = evalutils.f1_prec_recall(tp, tn, fp, fn, p, n)
+    avg_acc = (tp + tn) / (tp + tn + fp + fn)
+    print("Confusion matrix: {}".format(conf_mat))
+    print("{} accuracy: {}\tF1 = {}\tPrecision={}\tRecall={}".format('SVM', avg_acc, f1, precision, recall))
+
+    # log to comet
+    if config['log_experiment']:
+        experiment = config['experiment']
+        experiment.log_metric("test_F1", f1)
+        experiment.log_metric("test_accuracy", avg_acc)
+        experiment.log_metric("test_precision", precision)
+        experiment.log_metric("test_recall", recall)
+        experiment.log_metric("true_positives", tp)
+        experiment.log_metric("true_negatives", tn)
+        experiment.log_metric("false_positives", fp)
+        experiment.log_metric("false_negatives", fn)
 
 def cross_validate(config):
     train_set, dev_set, test_set = mod.SpeechDataset.splits(config)
@@ -95,33 +124,34 @@ def train_eval(config):
 
     result = trainutils.train_eval(data, labels, test_data, test_labels, pipeline)
     pipeline, y_test, y_pred, y_pred_proba = result
-
-    # compute and print metrics. acc, precision, recall, specificity, f1
-    conf_mat = metrics.confusion_matrix(y_test, y_pred, labels=np.arange(4))  # TODO remove this hard number '4'
-    tp, tn, fp, fn, p, n = evalutils.read_conf_matrix(conf_mat, pos_class=3)
-    f1, precision, recall = evalutils.f1_prec_recall(tp, tn, fp, fn, p, n)
-    avg_acc = (tp + tn) / (tp + tn + fp + fn)
-    print("Confusion matrix: {}".format(conf_mat))
-    print("{} accuracy: {}\tF1 = {}\tPrecision={}\tRecall={}".format('SVM', avg_acc, f1, precision, recall))
+    print_metrics_and_log(y_test, y_pred, config)
 
     # save results
-    result_file_path = os.path.join(config['exp_dir'], config['train_eval_file'])
-    joblib.dump(result, result_file_path)
+    if config['log_experiment']:
+        # save to file
+        result_file_path = os.path.join(config['exp_dir'], config['train_eval_file'])
+        joblib.dump(result, result_file_path)
+        print("Experiment files saved to", config['exp_dir'])
 
-    print("Experiment files saved to", config['exp_dir'])
-
-    # log to comet
-    if config['experiment']:
+        # log to comet
         experiment = config['experiment']
-        experiment.log_metric("test_f1", f1)
-        experiment.log_metric("test_accuracy", avg_acc)
-        # experiment.log_metric("test_precision", precision)
-        # experiment.log_metric("test_recall", recall)
-        experiment.log_metric("true_positives", tp)
-        experiment.log_metric("true_negatives", tn)
-        experiment.log_metric("false_positives", fp)
-        experiment.log_metric("false_negatives", fn)
         experiment.log_asset(result_file_path, overwrite=True)
+
+def eval(pipeline, config):
+    """
+    Evaluates the given model 'pipeline' on test data.
+    """
+    if not pipeline:
+        raise("Passed SVM model is null.")
+
+    train_set, dev_set, test_set = mod.SpeechDataset.splits(config)
+    print('Loaded {0} training\t{1} validation\t{2} test examples'.format(len(train_set), len(dev_set), len(test_set)))
+    test_data, test_labels = mod.SpeechDataset.convert_dataset(test_set)
+
+    y_pred_proba = pipeline.predict_proba(test_data)
+    y_pred = pipeline.predict(test_data)
+    print_metrics_and_log(test_labels, y_pred, config)
+
 
 def main():
     # load parameters
@@ -143,6 +173,12 @@ def main():
     elif config['mode'] == 'train_eval':
         print('Running in train/eval mode...')
         train_eval(config)
+    elif config['mode'] == 'eval':
+        print('Running in eval mode...')
+        pipeline, _,_,_ = joblib.load(config['input_file'])
+        eval(pipeline, config)
+    else:
+        raise("Unknown mode specified.")
 
 if __name__ == "__main__":
     main()
