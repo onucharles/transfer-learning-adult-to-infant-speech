@@ -16,13 +16,17 @@ def run_pca(data, labels, n_components=None, title=None):
     top2_var = np.sum(pca.explained_variance_ratio_[:2])
     print('sum of variance is: ', cumulative_var[-1])
     print('Top 2 principal components account for {0} variance'.format(top2_var))
+    top2_var_rounded = np.round(top2_var, 2)
+    print(top2_var_rounded)
 
     # plot cumulative variance
     plt.subplot(1,2,1)
     plt.plot(np.arange(len(cumulative_var)) + 1, cumulative_var)
-    plt.xlabel('no of features/principal components')
-    plt.ylabel('% variance explained')
-    plt.title('Cumulative variance explained')
+    plt.plot(2, top2_var, 'o', color='g')
+    plt.text(2 + 1, top2_var, 'Top 2 (cum. variance=' + str(top2_var_rounded) + ')')
+    plt.xlabel('no principal components')
+    plt.ylabel('% cumulative variance explained')
+    # plt.title('Cumulative variance explained')
     plt.grid()
 
     # plot first 2 principal components.
@@ -33,9 +37,7 @@ def run_pca(data, labels, n_components=None, title=None):
     plt.scatter(data_asphyxia[:, 0], data_asphyxia[:, 1], label='asphyxia')
     plt.xlabel('first principal component')
     plt.ylabel('second principal component')
-    top2_var_rounded = np.round(top2_var, 2)
-    print(top2_var_rounded)
-    plt.title('Top 2 principal components (variance=' + str(top2_var_rounded) + ')')
+    # plt.title('Top 2 principal components (variance=' + str(top2_var_rounded) + ')')
     plt.legend()
 
     return data_new
@@ -76,16 +78,16 @@ def main():
     # data_pca = run_pca(test_data, test_labels)
 
     # run pca for res8 no-transfer
-    # embedding_path = '/mnt/hdd/Experiments/chillanto-pt/20190308-142245/output_embeddings_test.pkl'
-    # embeddings, labels = joblib.load(embedding_path)
-    # print('loaded embedding shape is {0} and labels shape is {1}'.format(embeddings.shape, labels.shape))
-    # data_pca = run_pca(embeddings, labels, n_components=None)
-
-    # # run pca for res8 transfer
-    embedding_path = '/mnt/hdd/Experiments/chillanto-pt/20190308-141918/output_embeddings_train.pkl'
+    embedding_path = '/mnt/hdd/Experiments/chillanto-pt/20190308-142245/output_embeddings_test.pkl'
     embeddings, labels = joblib.load(embedding_path)
     print('loaded embedding shape is {0} and labels shape is {1}'.format(embeddings.shape, labels.shape))
     data_pca = run_pca(embeddings, labels, n_components=None)
+
+    # # run pca for res8 transfer
+    # embedding_path = '/mnt/hdd/Experiments/chillanto-pt/20190308-141918/output_embeddings_train.pkl'
+    # embeddings, labels = joblib.load(embedding_path)
+    # print('loaded embedding shape is {0} and labels shape is {1}'.format(embeddings.shape, labels.shape))
+    # data_pca = run_pca(embeddings, labels, n_components=None)
 
 
     plt.show()
