@@ -175,7 +175,7 @@ def main():
         train_eval(config)
     elif config['mode'] == 'eval':
         print('Running in eval mode...')
-        pipeline, _,_,_ = joblib.load(config['input_file'])
+        pipeline, _,_,_ = joblib.load(config['source_model'])
         eval(pipeline, config)
     else:
         raise("Unknown mode specified.")
