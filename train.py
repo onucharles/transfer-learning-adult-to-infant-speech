@@ -87,7 +87,7 @@ import torch.nn as nn
 import torch.utils.data as data
 
 import model as mod
-from utils.ioutils import save_json, create_folder, current_datetime
+from utils.ioutils import load_json, save_json, create_folder, current_datetime
 from utils import evalutils
 from sklearn import metrics
 from tensorboardX import SummaryWriter
@@ -178,9 +178,9 @@ def evaluate(config, model=None, test_loader=None):
         scores = model(model_in)
         labels = Variable(labels, requires_grad=False)
         loss = criterion(scores, labels)
-        results.append(compute_eval(scores, labels) * model_in.size(0))
+        results.append(compute_eval(scores.detach().cpu(), labels.detach().cpu()) * model_in.size(0))
         total += model_in.size(0)
-        conf_mat += confusion_matrix(scores, labels, classes)
+        conf_mat += confusion_matrix(scores.detach().cpu(), labels.detach().cpu(), classes)
         prediction_log.append((scores, labels))
     acc = sum(results) / total
     print_test_eval("Testing", acc, conf_mat, config['compute_f1'])
@@ -204,7 +204,7 @@ def load_weights(model, state_dict_path, params_to_load=[]):
 
     model.load_state_dict(desired_state_dict, strict=False)
 
-def get_loss_fxn(config):    
+def get_loss_fxn(config):
     #criterion = nn.CrossEntropyLoss(weight=1/torch.cuda.FloatTensor([0, 0, 0.76, 0.24]))
     if config['loss'] == 'crossent':
         criterion = nn.CrossEntropyLoss()
@@ -248,17 +248,17 @@ def train(config):
     if not config["no_cuda"]:
         torch.cuda.set_device(config["gpu_no"])
         model.cuda()
-    
+
     optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][0], nesterov=config["use_nesterov"], weight_decay=config["weight_decay"], momentum=config["momentum"])
     schedule_steps = config["schedule"]
     schedule_steps.append(np.inf)
     sched_idx = 0
     criterion = get_loss_fxn(config)
     max_acc = 0
-   
-    sampler = get_sampler(train_set, config)
+
+    sampler = None #get_sampler(train_set, config)
     do_shuffle = True if sampler is None else False
-    train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=do_shuffle, 
+    train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=do_shuffle,
             drop_last=True, sampler=sampler)
     dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
     test_loader = data.DataLoader(test_set, batch_size=min(len(test_set), 16), shuffle=True)
@@ -306,8 +306,8 @@ def train(config):
                 labels = Variable(labels, requires_grad=False)
                 loss = criterion(scores, labels)
                 loss_numeric = loss.item()
-                accs.append(compute_eval(scores, labels))
-                conf_mat += confusion_matrix(scores, labels, classes)
+                accs.append(compute_eval(scores.detach().cpu(), labels.detach().cpu()))
+                conf_mat += confusion_matrix(scores.detach().cpu(), labels.detach().cpu(), np.arange(n_labels))
             avg_acc = np.mean(accs)
             print_test_eval("Validation", avg_acc, conf_mat, config['compute_f1'])
             # summary_writer.add_scalar('data/valid_acc', avg_acc, epoch_idx)
@@ -393,15 +393,20 @@ def main():
         seed=11, use_nesterov=False, input_file="", gpu_no=1, cache_size=32768, momentum=0.9, weight_decay=0.00001,
         output_folder="", compute_f1=False, params_to_load=params_to_load, loss='crossent')
 
+
+    config = load_json('./sc_legacy.json')
+
+
     # Fetch model parameters, speech dataset parameters and global parameters.
     # Combine them with current config into ChainMap.
     builder = ConfigBuilder(
-        vars(config),
-        mod.find_config(config.model),
+#        vars(config),
+        config,
+        mod.find_config(config['model']),
         mod.SpeechDataset.default_config(),
         global_config)
     parser = builder.build_argparse()
-    parser.add_argument("--mode", choices=["train", "eval", "save_embedding"], default="save_embedding", type=str)
+    #parser.add_argument("--mode", choices=["train", "eval", "save_embedding"], default="train", type=str)
     config = builder.config_from_argparse(parser)
 
     # Prepare experiment directory, save config to file.
@@ -412,6 +417,8 @@ def main():
 
     # Run training or evaluation.
     set_seed(config)
+    train(config)
+    return
     if config["mode"] == "train":
         print("Running in training mode...")
         train(config)

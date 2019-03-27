@@ -18,7 +18,7 @@ params_to_load = ['conv0.weight', 'bn1.running_mean', 'bn1.running_var', 'bn1.nu
 
 def build_config(seed):
     config = task_config({
-            'project': 'chillanto',
+            'project': 'chillanto3',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chill_trans_sc',
             'log_file_path': CHILLANTO_LOGGING_FOLDER,
             'predictions_path': CHILLANTO_LOGGING_FOLDER,
@@ -27,8 +27,8 @@ def build_config(seed):
             'lr': [0.001, 0.0001],
             'weight_decay': 0.00001,
             'momentum': 0.9,
-            'schedule': [750],
-            'n_epochs': 50,
+            'schedule': [5750],
+            'n_epochs': 32,
             'n_labels': 4,
             'silence_prob': 0.0,
             'noise_prob': 0.0,

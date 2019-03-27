@@ -11,6 +11,7 @@ from src.training_helpers import print_eval, set_seed, compute_eval, confusion_m
 
 class TrainerAndEvaluator():
     def __init__(self, task_params):
+        self.task_params = task_params
         self.experiment = task_params['experiment']
         config = task_params['config']
         self.train_loader, self.dev_loader, self.test_loader = task_params['loaders']
@@ -60,7 +61,16 @@ class TrainerAndEvaluator():
         #self.model = torch.nn.DataParallel(model)
 
     def set_best_model(self):
-        self.best_model = self.model
+        state_dict_path = f"{self.model_path}/_best.mdl"
+        print("loading ", state_dict_path)
+        model = self.task_params['model']
+        state_dict = torch.load(state_dict_path, map_location='cuda:0')
+        model.load_state_dict(state_dict)
+
+        model.to(self.device)
+        # trying for Speech commands to see if it makes a difference on
+        # transfer:
+        self.best_model = model
 
     def setup_paths(self, config, experiment):
         model_path = config['model_path'] / experiment.id
@@ -105,8 +115,7 @@ class TrainerAndEvaluator():
         if metric > self.max_eval_metric:
             print("saving best model...")
             self.max_eval_metric = metric
-            self.set_best_model()
-            torch.save(self.model.state_dict(),f"{self.model_path}/{self.eval_metric}.{self.max_eval_metric}.mdl")
+            torch.save(self.model.state_dict(),f"{self.model_path}/_best.mdl")
 
     def dump_logs_and_predictions(self, predictions):
         joblib.dump((self.train_logs, self.valid_logs), self.log_file_path)
@@ -121,7 +130,7 @@ class TrainerAndEvaluator():
         total = 0
         self.reset_confusion_matrix()
         prediction_log = []
-        torch.save(self.best_model.state_dict(), f"{self.model_path}/_best.mdl")
+        self.set_best_model()
         self.best_model.eval()
         with torch.no_grad():
             for model_in, labels in self.test_loader:
@@ -145,7 +154,7 @@ class TrainerAndEvaluator():
     def perform_training(self):
         self.epoch_no = 0
         self.step_no = 0
-        self.max_eval_metric = 0
+        self.max_eval_metric = 0.
 
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.config["lr"][0],
                 nesterov=self.config["use_nesterov"],
@@ -227,6 +236,7 @@ class TrainerAndEvaluator():
                     self.update_eval_metric_and_save_model(f1)
                 else:
                     self.update_eval_metric_and_save_model(val_acc)
+                torch.save(self.model.state_dict(),f"{self.model_path}/_best.mdl")
 
         predictions = self.evaluate()
         self.dump_logs_and_predictions(predictions)
