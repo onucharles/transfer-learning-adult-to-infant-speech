@@ -1,10 +1,16 @@
 # configuration parameters for classical models
 
 c_parameters = {
-        'mode': 'model_selection',   # 'train_eval'
+        'mode': 'eval', # 'model_selection' or 'train_eval' or 'eval' or 'noisy_eval'
+        'seed': 5,
+        'log_experiment': True,
 
-        'svm_kernel': 'rbf', # 'polynomial'
+        # 'mode' == 'eval' or 'noisy_eval'
+        'source_model': '/mnt/hdd/Experiments/chillanto-svm/704543ed6f50428d8242c7bf53a84ddf/train_eval.pkl',
 
+        'svm_kernel': 'rbf', # 'polynomial' or 'rbf'
+
+        # hyperparameter ranges. 'mode' == 'model_selection'
         'svm_hyperparam_range': {
             # np.logspace(-5, 1, 5)
             'gamma': [1.00000000e-05, 3.16227766e-04, 1.00000000e-02, 3.16227766e-01,     1.00000000e+01],
@@ -13,6 +19,17 @@ c_parameters = {
         },
 
         'svm_no_folds': 5,
+
+        # paths. 'log_experiment' == True
+        'output_folder': '/mnt/hdd/Experiments/chillanto-svm',
+        'grid_search_file': 'gridsearch.pkl',
+        'train_eval_file': 'train_eval.pkl',
+
+        # training setting. 'mode' == 'train_eval'
+        'svm_train_params': {
+            'C': 10,
+            'gamma': 1e-5
+        },
 
         # SpeechDataset params
         "group_speakers_by_id":  True,
@@ -32,16 +49,4 @@ c_parameters = {
         "window_size_ms": 30,
         "frame_shift_ms": 10,
         "cache_size": 32768,
-
-        # other paths
-        'output_folder': '/mnt/hdd/Experiments/chillanto-svm',
-        'grid_search_file': 'gridsearch.pkl',
-        'train_eval_file': 'train_eval.pkl',
-
-        # training setting
-        'svm_train_params': {
-            'C': 10,
-            'gamma': 1e-5
-        }
-
 }

@@ -439,6 +439,7 @@ class SpeechDataset(data.Dataset):
     def __len__(self):
         return len(self.audio_labels) + self.n_silence
 
+
 _configs = {
     ConfigType.CNN_TRAD_POOL2.value: dict(dropout_prob=0.5, height=101, width=40, n_labels=4, n_feature_maps1=64,
         n_feature_maps2=64, conv1_size=(20, 8), conv2_size=(10, 4), conv1_pool=(2, 2), conv1_stride=(1, 1),

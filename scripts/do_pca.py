@@ -7,43 +7,53 @@ import model as mod
 from sklearn.manifold import TSNE
 from sklearn.externals import joblib
 
-def run_pca(data, labels, n_components=100):
+def run_pca(data, labels, n_components=None, title=None):
     # calculate pca
     pca = PCA(n_components=n_components, whiten=True)
     data_new = pca.fit_transform(data)
 
     cumulative_var = np.cumsum(pca.explained_variance_ratio_)
+    top2_var = np.sum(pca.explained_variance_ratio_[:2])
     print('sum of variance is: ', cumulative_var[-1])
+    print('Top 2 principal components account for {0} variance'.format(top2_var))
+    top2_var_rounded = np.round(top2_var, 2)
+    print(top2_var_rounded)
 
     # plot cumulative variance
-    plt.figure()
+    plt.subplot(1,2,1)
     plt.plot(np.arange(len(cumulative_var)) + 1, cumulative_var)
+    plt.plot(2, top2_var, 'o', color='g')
+    plt.text(2 + 1, top2_var, 'Top 2 (cum. variance=' + str(top2_var_rounded) + ')')
+    plt.xlabel('no principal components')
+    plt.ylabel('% cumulative variance explained')
+    # plt.title('Cumulative variance explained')
     plt.grid()
 
     # plot first 2 principal components.
+    plt.subplot(1,2,2)
     data_normal = data_new[labels == 2, :]
     data_asphyxia = data_new[labels == 3, :]
-    plt.figure()
     plt.scatter(data_normal[:, 0], data_normal[:, 1], label='normal')
     plt.scatter(data_asphyxia[:, 0], data_asphyxia[:, 1], label='asphyxia')
+    plt.xlabel('first principal component')
+    plt.ylabel('second principal component')
+    # plt.title('Top 2 principal components (variance=' + str(top2_var_rounded) + ')')
     plt.legend()
-
-    print('Top 2 principal components account for {0} variance'.format(np.sum(pca.explained_variance_ratio_[:2])))
 
     return data_new
 
-def run_tsne(data, labels):
-    data_embedded = TSNE(n_components=2).fit_transform(data)
-
-    data_normal = data_embedded[labels == 2, :]
-    data_asphyxia = data_embedded[labels == 3, :]
-
-    plt.figure()
-    plt.scatter(data_normal[:,0], data_normal[:,1], label='normal')
-    plt.scatter(data_asphyxia[:,0], data_asphyxia[:,1], label='asphyxia')
-    plt.legend()
-
-    joblib.dump(data_embedded, '/mnt/hdd/Dropbox (NRP)/paper/tsne_data/mfcc_tsne_test_only.pkl')
+# def run_tsne(data, labels):
+#     data_embedded = TSNE(n_components=2).fit_transform(data)
+#
+#     data_normal = data_embedded[labels == 2, :]
+#     data_asphyxia = data_embedded[labels == 3, :]
+#
+#     plt.figure()
+#     plt.scatter(data_normal[:,0], data_normal[:,1], label='normal')
+#     plt.scatter(data_asphyxia[:,0], data_asphyxia[:,1], label='asphyxia')
+#     plt.legend()
+#
+#     joblib.dump(data_embedded, '/mnt/hdd/Dropbox (NRP)/neurips2018_paper/tsne_data/mfcc_tsne_test_only.pkl')
 
 def main():
     # load parameters
@@ -65,13 +75,20 @@ def main():
     #       .format(data.shape, labels.shape))
 
     # run pca for raw mfcc features
-    data_pca = run_pca(test_data, test_labels)
+    # data_pca = run_pca(test_data, test_labels)
 
-    # run pca for saved features
-    embedding_path = '/mnt/hdd/Dropbox (NRP)/paper/tsne_data/output_embeddings_transfer.pkl'
+    # run pca for res8 no-transfer
+    embedding_path = '/mnt/hdd/Experiments/chillanto-pt/20190308-142245/output_embeddings_test.pkl'
     embeddings, labels = joblib.load(embedding_path)
     print('loaded embedding shape is {0} and labels shape is {1}'.format(embeddings.shape, labels.shape))
     data_pca = run_pca(embeddings, labels, n_components=None)
+
+    # # run pca for res8 transfer
+    # embedding_path = '/mnt/hdd/Experiments/chillanto-pt/20190308-141918/output_embeddings_train.pkl'
+    # embeddings, labels = joblib.load(embedding_path)
+    # print('loaded embedding shape is {0} and labels shape is {1}'.format(embeddings.shape, labels.shape))
+    # data_pca = run_pca(embeddings, labels, n_components=None)
+
 
     plt.show()
 
