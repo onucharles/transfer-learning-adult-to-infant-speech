@@ -14,6 +14,9 @@ from chillanto_02_transfer import model_transfer as chill_transfer
 # Noise Experiments
 from noise_evaluate import noise_evaluate as noise_eval
 
+# Ablation Experiments
+from freq_ablation_evaluate import freq_ablation_evaluate as freqab_eval
+
 # Debug Experiments
 from chillanto_sc_debug import sc_debug as sc_debug
 if __name__ == '__main__':

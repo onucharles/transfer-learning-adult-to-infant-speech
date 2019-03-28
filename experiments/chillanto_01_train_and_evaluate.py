@@ -22,7 +22,7 @@ def build_config(seed):
             'unknown_prob': 0.0,
             'input_length': 8000,
             'wanted_words': ['normal', 'asphyxia'],
-            'batch_size': 32,
+            'batch_size': 50,
             "dev_pct": 5,
             "test_pct": 40,
             "sampling_freq": 8000,
@@ -41,4 +41,6 @@ def train_and_evaluate(seed=3):
     set_seed(config)
     data_loaders = build_data_loaders(config, ChillantoDataset, chillanto_sampler)
     params = setup_task(config, data_loaders, 4)
+    experiment = params['experiment']
+    experiment.add_tag('no-transfer')
     task_train_and_evaluate(params)

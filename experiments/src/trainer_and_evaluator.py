@@ -60,17 +60,11 @@ class TrainerAndEvaluator():
         self.model = model
         #self.model = torch.nn.DataParallel(model)
 
-    def set_best_model(self):
+    def load_best_model(self):
         state_dict_path = f"{self.model_path}/_best.mdl"
         print("loading ", state_dict_path)
-        model = self.task_params['model']
         state_dict = torch.load(state_dict_path, map_location='cuda:0')
-        model.load_state_dict(state_dict)
-
-        model.to(self.device)
-        # trying for Speech commands to see if it makes a difference on
-        # transfer:
-        self.best_model = model
+        self.model.load_state_dict(state_dict)
 
     def setup_paths(self, config, experiment):
         model_path = config['model_path'] / experiment.id
@@ -104,7 +98,7 @@ class TrainerAndEvaluator():
 
     def update_confusion_matrix(self, scores, labels):
         if self.print_confusion_matrix:
-            self.conf_mat += confusion_matrix(scores.detach().cpu(), labels.detach().cpu(), np.arange(self.n_labels))
+            self.conf_mat += confusion_matrix(scores.cpu(), labels.cpu(), np.arange(self.n_labels))
 
     def reset_confusion_matrix(self):
         if self.print_confusion_matrix:
@@ -130,13 +124,13 @@ class TrainerAndEvaluator():
         total = 0
         self.reset_confusion_matrix()
         prediction_log = []
-        self.set_best_model()
-        self.best_model.eval()
+        self.load_best_model()
+        self.model.eval()
         with torch.no_grad():
             for model_in, labels in self.test_loader:
                 model_in = model_in.to(self.device)
                 labels = labels.to(self.device)
-                scores = self.best_model(model_in.clone().detach())
+                scores = self.model(model_in.clone().detach())
                 loss = criterion(scores, labels)
                 model_in_size = model_in.size(0)
                 results.append(compute_eval(scores, labels) * model_in_size)
@@ -194,7 +188,7 @@ class TrainerAndEvaluator():
                     self.experiment.log_metric('learning_rate', self.config["lr"][sched_idx], step=self.step_no)
 
                 train_score = compute_eval(scores, labels)
-                training_accuracies.append(train_score.detach().cpu())
+                training_accuracies.append(train_score.cpu())
                 self.report_training(train_score, loss)
             avg_train_acc = np.mean(training_accuracies)
             self.experiment.log_metric('train_accuracy', avg_train_acc, step=self.step_no)
@@ -215,7 +209,7 @@ class TrainerAndEvaluator():
                         labels = Variable(labels, requires_grad=False)
                         model_in_size = model_in.size(0)
                         val_loss += criterion(scores, labels) * model_in_size
-                        valid_scores = compute_eval(scores.detach().cpu(), labels.detach().cpu())
+                        valid_scores = compute_eval(scores.cpu(), labels.cpu())
                         # validation_accuracies.append(valid_scores.detach().cpu())
                         val_acc += valid_scores * model_in_size
                         val_total_size += model_in_size
@@ -236,7 +230,6 @@ class TrainerAndEvaluator():
                     self.update_eval_metric_and_save_model(f1)
                 else:
                     self.update_eval_metric_and_save_model(val_acc)
-                torch.save(self.model.state_dict(),f"{self.model_path}/_best.mdl")
 
         predictions = self.evaluate()
         self.dump_logs_and_predictions(predictions)

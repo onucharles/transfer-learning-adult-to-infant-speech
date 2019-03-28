@@ -48,7 +48,7 @@ def build_config():
             'label_limit': 200,
             'seed': 9,
             'model_class': 'res8',
-            'input_length': 48000, # let's use 3 secs for now as in vgg paper.
+            'input_length': 8000,
             'loss': 'hinge',
             'timeshift_ms': 1000
             })
@@ -69,6 +69,4 @@ def train_and_evaluate():
     no_of_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print('Model has {0} parameters'.format(no_of_params))
     experiment.set_model_graph((str(model)))
-    # return
-
     task_train_and_evaluate(params)

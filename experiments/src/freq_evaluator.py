@@ -10,15 +10,13 @@ from src.training_helpers import print_eval, set_seed, compute_eval, confusion_m
 
 from src.evaluator import Evaluator
 
-class NoiseEvaluator(Evaluator):
+class FreqEvaluator(Evaluator):
     def __init__(self, task_params):
-        super(NoiseEvaluator, self).__init__(task_params)
-        config = task_params['config']
-        self.noise_pct = config['noise_pct'] * 100
+        super(FreqEvaluator, self).__init__(task_params)
 
     def report_f1_precision_recall(self, label):
         if self.print_confusion_matrix:
             f1, precision, recall = calc_f1_prec_recall(self.conf_mat)
-            self.experiment.log_metric(f'{label}_F1', f1, step=self.noise_pct)
-            self.experiment.log_metric(f'{label}_precision', precision, step=self.noise_pct)
-            self.experiment.log_metric(f'{label}_recall', recall, step=self.noise_pct)
+            self.experiment.log_metric(f'{label}_F1', f1, step=self.step)
+            self.experiment.log_metric(f'{label}_precision', precision, step=self.step)
+            self.experiment.log_metric(f'{label}_recall', recall, step=self.step)

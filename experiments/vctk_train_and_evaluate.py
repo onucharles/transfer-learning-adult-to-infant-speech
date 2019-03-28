@@ -26,7 +26,7 @@ def build_config():
             'predictions_path': VCTK_LOGGING_FOLDER ,
             'data_folder': VCTK_DATA_FOLDER,
             'print_confusion_matrix': False,
-            'n_epochs': 10,
+            'n_epochs': 32,
             'lr': [0.001, 0.0001],
             'schedule': [25000],
             'batch_size': 32,
@@ -35,7 +35,7 @@ def build_config():
             'label_limit': False,
             'seed': 9,
             'model_class': 'res8',
-            'input_length': 16000,
+            'input_length': 8000,
             'loss': 'hinge',
             })
     # Merge together the model, training and dataset configuration:

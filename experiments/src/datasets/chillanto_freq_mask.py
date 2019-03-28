@@ -34,7 +34,7 @@ def chillanto_sampler(train_set, config):
 
     return sampler
 
-class ChillantoNoiseMixDataset(data.Dataset):
+class ChillantoFreqMaskDataset(data.Dataset):
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
     def __init__(self, data, set_type, config):
@@ -43,9 +43,6 @@ class ChillantoNoiseMixDataset(data.Dataset):
         self.set_type = set_type
         self.audio_labels = list(data.values())
         self.input_length = config["input_length"]
-        config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
-        noise_samples = [librosa.core.load(file, sr=self.input_length) for file in config["bg_noise_files"]]
-        self.bg_noise_audio = list([librosa.resample(sample, freq, config['sampling_freq']) for idx, (sample, freq) in enumerate(noise_samples)])
         self.unknown_prob = config["unknown_prob"]
         self.silence_prob = config["silence_prob"]
         self.noise_prob = config["noise_prob"]
@@ -61,7 +58,9 @@ class ChillantoNoiseMixDataset(data.Dataset):
         self.sampling_freq = config["sampling_freq"]
         self.window_size_ms = config["window_size_ms"]
         self.frame_shift_ms = config["frame_shift_ms"]
-        self.noise_pct = config['noise_pct']
+
+        # which range of MELs do we copy into our sample:
+        self.freq_range = config["freq_range"]
 
     @staticmethod
     def default_config(custom):
@@ -85,7 +84,6 @@ class ChillantoNoiseMixDataset(data.Dataset):
         config["n_feature_maps"] = 45
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
-        config["noise_pct"] = 0.
         config["loss"] = "hinge"
         return ChainMap(custom,config)
 
@@ -94,17 +92,14 @@ class ChillantoNoiseMixDataset(data.Dataset):
         data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
-        bg_noise = np.random.choice(self.bg_noise_audio)
-        bg_noise = np.pad(bg_noise, (0, max(0, in_len - len(bg_noise))), "constant")
-        noise_sample = bg_noise[:in_len]
-        #noise_range = random.randint(0, len(bg_noise) - in_len - 1)
-        #noise_sample = bg_noise[noise_range:noise_range + in_len]
-        # mix the noise into the data:
-        data = self.noise_pct * noise_sample[:in_len] + data[:in_len]
+        data = data[:in_len]
 
-        data = torch.from_numpy(
-            preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
-        )
+        data = preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
+
+        freq_start, freq_end = self.freq_range
+        masked = np.zeros_like(data)
+        masked[freq_start:freq_end] = data[freq_start:freq_end]
+        data = torch.from_numpy(masked)
         return data
 
     @classmethod
