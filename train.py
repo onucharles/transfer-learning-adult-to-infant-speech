@@ -90,7 +90,7 @@ import model as mod
 from utils.ioutils import save_json, create_folder, current_datetime
 from utils import evalutils
 from sklearn import metrics
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
 from sklearn.externals import joblib
 from ConfigBuilder import ConfigBuilder
 
@@ -134,6 +134,8 @@ def compute_eval(scores, labels):
     return metric_value
 
 def confusion_matrix(scores, labels, classes=None):
+    scores = scores.detach().cpu()
+    labels = labels.detach().cpu()
     batch_size = labels.size(0)
     predictions = torch.max(scores, 1)[1].view(batch_size).data
     cm = metrics.confusion_matrix(labels.data, predictions, labels=classes)
@@ -203,8 +205,12 @@ def evaluate(config, model=None, test_loader=None):
         if not config["no_cuda"]:
             model_in = model_in.cuda()
             labels = labels.cuda()
-        scores = model(model_in)
+        scores = model(model_in.clone().detach())
         labels = Variable(labels, requires_grad=False)
+
+        scores = scores.detach()
+        labels = labels.detach()
+
         loss = criterion(scores, labels)
         results.append(compute_eval(scores, labels) * model_in.size(0))
         total += model_in.size(0)
@@ -223,7 +229,7 @@ def load_weights(model, state_dict_path, params_to_load=[]):
         params_to_load - list of parameter names to be loaded.
     """
     print("loading weights from model at '{0}'.\nParameters to load are: {1}".format(state_dict_path, params_to_load))
-    state_dict = torch.load(state_dict_path)
+    state_dict = torch.load(state_dict_path, map_location='cuda:0')
 
     desired_state_dict = {}
     for name, item in state_dict.items():
@@ -232,7 +238,7 @@ def load_weights(model, state_dict_path, params_to_load=[]):
 
     model.load_state_dict(desired_state_dict, strict=False)
 
-def get_loss_fxn(config):    
+def get_loss_fxn(config):
     #criterion = nn.CrossEntropyLoss(weight=1/torch.cuda.FloatTensor([0, 0, 0.76, 0.24]))
     if config['loss'] == 'crossent':
         criterion = nn.CrossEntropyLoss()
@@ -276,17 +282,18 @@ def train(config):
     if not config["no_cuda"]:
         torch.cuda.set_device(config["gpu_no"])
         model.cuda()
-    
+
     optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][0], nesterov=config["use_nesterov"], weight_decay=config["weight_decay"], momentum=config["momentum"])
     schedule_steps = config["schedule"]
     schedule_steps.append(np.inf)
     sched_idx = 0
     criterion = get_loss_fxn(config)
     max_acc = 0
-   
-    sampler = get_sampler(train_set, config)
+
+    #sampler = get_sampler(train_set, config)
+    sampler = None
     do_shuffle = True if sampler is None else False
-    train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=do_shuffle, 
+    train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=do_shuffle,
             drop_last=True, sampler=sampler)
     dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=False)
     test_loader = data.DataLoader(test_set, batch_size=min(len(test_set), 16), shuffle=False)
