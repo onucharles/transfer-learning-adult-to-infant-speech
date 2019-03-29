@@ -95,11 +95,10 @@ class ChillantoFreqMaskDataset(data.Dataset):
         data = data[:in_len]
 
         data = preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
-
         freq_start, freq_end = self.freq_range
         masked = np.zeros_like(data)
-        masked[freq_start:freq_end] = data[freq_start:freq_end]
-        data = torch.from_numpy(masked)
+        data[freq_start:freq_end] = masked[freq_start:freq_end]
+        data = torch.from_numpy(data)
         return data
 
     @classmethod
