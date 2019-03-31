@@ -18,7 +18,7 @@ params_to_load = ['conv0.weight', 'bn1.running_mean', 'bn1.running_var', 'bn1.nu
 
 def build_config(seed):
     config = task_config({
-            'project': 'chillanto2',
+            'project': 'chillanto_interspeech',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chill_trans_sc',
             'log_file_path': CHILLANTO_LOGGING_FOLDER,
             'predictions_path': CHILLANTO_LOGGING_FOLDER,

@@ -90,7 +90,7 @@ import model as mod
 from utils.ioutils import save_json, create_folder, current_datetime
 from utils import evalutils
 from sklearn import metrics
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
 from sklearn.externals import joblib
 from ConfigBuilder import ConfigBuilder
 
@@ -134,6 +134,8 @@ def compute_eval(scores, labels):
     return metric_value
 
 def confusion_matrix(scores, labels, classes=None):
+    scores = scores.detach().cpu()
+    labels = labels.detach().cpu()
     batch_size = labels.size(0)
     predictions = torch.max(scores, 1)[1].view(batch_size).data
     cm = metrics.confusion_matrix(labels.data, predictions, labels=classes)

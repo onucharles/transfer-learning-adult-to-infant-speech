@@ -48,7 +48,7 @@ def setup_task(config, n_labels):
 def build_config(seed):
     config = task_config({
             'project': 'chillanto-frequency-mask',
-            'model_path': CHILLANTO_MODELS_FOLDER / 'chillanto_noise' ,
+            'model_path': CHILLANTO_MODELS_FOLDER / 'chillanto_freq_ablation' ,
             'log_file_path': CHILLANTO_LOGGING_FOLDER ,
             'predictions_path': CHILLANTO_LOGGING_FOLDER ,
             "data_folder": CHILLANTO_DATA_FOLDER,
