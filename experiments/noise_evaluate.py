@@ -1,7 +1,7 @@
 from pathlib import Path
 from collections import ChainMap
 from src.settings import CHILLANTO_DATA_FOLDER, CHILLANTO_LOGGING_FOLDER, CHILLANTO_MODELS_FOLDER, CHILLANTO_NOISE_DATA_FOLDER
-from src.datasets.chillanto_noise_mix import ChillantoNoiseMixDataset, chillanto_sampler
+from src.datasets.chillanto_noise_mix import ChillantoNoiseMixDataset
 from src.training_helpers import set_seed
 from collections import ChainMap
 import numpy as np
@@ -15,9 +15,8 @@ from src.settings import MODEL_CLASS
 from src.model import find_model
 from src.noise_evaluator import NoiseEvaluator
 
-def build_test_data_loader(config, dataset_class, sampler_func):
+def build_test_data_loader(config, dataset_class):
     train_set, dev_set, test_set = dataset_class.splits(config)
-    sampler = sampler_func(train_set, config)
     return data.DataLoader(test_set,  num_workers=4,batch_size=1000)
 
 def task_config(custom_config={}):
@@ -72,9 +71,9 @@ def build_config(seed):
 
 def set_noise_files(noise_type):
     if noise_type == 'gaussian':
-        return [ str(CHILLANTO_NOISE_DATA_FOLDER / 'gaussian_0_1_noise.wav') ]
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'gaussian_0_1_noise.wav' ]
     if noise_type == 'dog_bark':
-        return [ CHILLANTO_NOISE_DATA_FOLDER / 'dog_bark' / f'{fn}.wav' for fn in [4, 15, 68, 71, 78, 97, 139, 160, 163, 164]]
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'dog_bark' / f'{fn}.wav' for fn in [4, 15, 68, 71, 97, 160, 163, 164]]
     if noise_type == 'children_playing':
         return [ CHILLANTO_NOISE_DATA_FOLDER / 'children_playing' / f'{fn}.wav' for fn in [6, 32, 44, 54, 56, 67, 87, 134, 152, 174]]
     if noise_type == 'siren':
@@ -105,7 +104,7 @@ def noise_evaluate(noise_type, tag, source_model_path, seed=9, noise_range=[0., 
         config['noise_pct'] = float(pct)
         params['model'] = load_model(params['model'], source_model_path)
         experiment.log_metric('noise_pct', pct)
-        test_data_loader = build_test_data_loader(config, ChillantoNoiseMixDataset, chillanto_sampler)
+        test_data_loader = build_test_data_loader(config, ChillantoNoiseMixDataset)
         te = NoiseEvaluator(params)
         te.test_loader = test_data_loader
         te.evaluate()
