@@ -5,7 +5,7 @@ from src.tasks.train_and_evaluate import task_train_and_evaluate, task_config, s
 from src.training_helpers import set_seed
 def build_config(seed):
     config = task_config({
-            'project': 'chillanto2',
+            'project': 'chillanto_interspeech',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chillanto' ,
             'log_file_path': CHILLANTO_LOGGING_FOLDER ,
             'predictions_path': CHILLANTO_LOGGING_FOLDER ,

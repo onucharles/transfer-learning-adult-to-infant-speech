@@ -29,7 +29,6 @@ def chillanto_sampler(train_set, config):
         _, label = train_set[i]
         sample_weights.append(1 / class_prob[label])
 
-    sample_weights = torch.Tensor(sample_weights)
     sampler = torch.utils.data.sampler.WeightedRandomSampler(sample_weights, len(train_set))
 
     return sampler

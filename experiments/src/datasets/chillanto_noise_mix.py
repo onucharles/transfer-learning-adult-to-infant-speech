@@ -43,8 +43,10 @@ class ChillantoNoiseMixDataset(data.Dataset):
         self.set_type = set_type
         self.audio_labels = list(data.values())
         self.input_length = config["input_length"]
-        config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
-        noise_samples = [librosa.core.load(file, sr=self.input_length) for file in config["bg_noise_files"]]
+        config["bg_noise_files"] = list(filter(lambda x: str(x).endswith("wav"), config.get("bg_noise_files", [])))
+        noise_samples = [librosa.core.load(str(file), sr=self.input_length) for file in config["bg_noise_files"]]
+
+        #noise_samples = [librosa.load(file) for file in ['/network/data1/maloneyj/noise/siren/60.wav']]
         self.bg_noise_audio = list([librosa.resample(sample, freq, config['sampling_freq']) for idx, (sample, freq) in enumerate(noise_samples)])
         self.unknown_prob = config["unknown_prob"]
         self.silence_prob = config["silence_prob"]
@@ -94,7 +96,8 @@ class ChillantoNoiseMixDataset(data.Dataset):
         data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
-        bg_noise = np.random.choice(self.bg_noise_audio)
+        #bg_noise = np.random.choice(self.bg_noise_audio)
+        bg_noise = self.bg_noise_audio[0]
         bg_noise = np.pad(bg_noise, (0, max(0, in_len - len(bg_noise))), "constant")
         noise_sample = bg_noise[:in_len]
         #noise_range = random.randint(0, len(bg_noise) - in_len - 1)
@@ -167,9 +170,9 @@ class ChillantoNoiseMixDataset(data.Dataset):
             a = b
 
         print("labels are: ", words)
-        train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
-        test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
-        datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg), cls(sets[1], DatasetType.DEV, test_cfg), cls(sets[2], DatasetType.TEST, test_cfg))
+        #train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
+        #test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
+        datasets = (cls(sets[0], DatasetType.TRAIN, config), cls(sets[1], DatasetType.DEV, config), cls(sets[2], DatasetType.TEST, config))
         return datasets
 
     @staticmethod

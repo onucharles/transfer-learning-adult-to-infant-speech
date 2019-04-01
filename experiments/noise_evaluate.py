@@ -17,9 +17,6 @@ from src.noise_evaluator import NoiseEvaluator
 
 def build_test_data_loader(config, dataset_class, sampler_func):
     train_set, dev_set, test_set = dataset_class.splits(config)
-
-    print("test set", len(test_set))
-
     sampler = sampler_func(train_set, config)
     return data.DataLoader(test_set,  num_workers=4,batch_size=1000)
 
@@ -75,7 +72,7 @@ def build_config(seed):
 
 def set_noise_files(noise_type):
     if noise_type == 'gaussian':
-        return [ CHILLANTO_NOISE_DATA_FOLDER / 'gaussian_0_1_noise.wav']
+        return [ str(CHILLANTO_NOISE_DATA_FOLDER / 'gaussian_0_1_noise.wav') ]
     if noise_type == 'dog_bark':
         return [ CHILLANTO_NOISE_DATA_FOLDER / 'dog_bark' / f'{fn}.wav' for fn in [4, 15, 68, 71, 78, 97, 139, 160, 163, 164]]
     if noise_type == 'children_playing':
@@ -93,7 +90,7 @@ def load_model(model, source_model_path):
     model.load_state_dict(desired_model_params)
     return model
 
-def noise_evaluate(noise_type, tag, source_model_path, seed=3, noise_range=[0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]):
+def noise_evaluate(noise_type, tag, source_model_path, seed=9, noise_range=[0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]):
 
     config = build_config(seed)
     config['noise_type'] = noise_type

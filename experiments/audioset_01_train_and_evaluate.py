@@ -41,10 +41,10 @@ def build_config():
             'print_confusion_matrix': False,
             'n_epochs': 30,
             'lr': [0.001, 0.0001],
-            'schedule': [15000],
-            'batch_size': 64,
+            'schedule': [1000],
+            'batch_size': 32,
             'model_class': 'res8',
-            'weight_decay': 0.000001,
+            'weight_decay': 0.00001,
             'momentum': 0.9,
             'loss': 'hinge',
             'seed': 9

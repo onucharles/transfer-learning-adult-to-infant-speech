@@ -31,15 +31,9 @@ def task_config(custom_config={}):
     """ Reasonable defaults for the training task """
     default_config = {
         'n_epochs': 1,
-        'lr': [0.1, 0.01, 0.001],
-        'schedule': [0, 30000, 60000],
-        'batch_size': 128,
-        'weight_decay': 0.00001,
         'dev_every': 1,
         'use_nesterov': False,
         'weight_decay': False,
-        'momentum': False,
-        'seed': 1,
         'model_class': MODEL_CLASS,
         'print_confusion_matrix': False,
     }
