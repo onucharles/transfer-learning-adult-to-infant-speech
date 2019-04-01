@@ -17,10 +17,7 @@ from src.freq_evaluator import FreqEvaluator
 
 def build_test_data_loader(config, dataset_class, sampler_func):
     train_set, dev_set, test_set = dataset_class.splits(config)
-
     print("test set", len(test_set))
-
-    sampler = sampler_func(train_set, config)
     return data.DataLoader(test_set,  num_workers=4,batch_size=1000)
 
 def task_config(custom_config={}):
@@ -89,13 +86,13 @@ def freq_ablation_evaluate(tag, source_model_path, seed=3):
     params = setup_task(config, 4)
     experiment = params['experiment']
     experiment.add_tag(tag)
-    ranges = [ (0,10), (11,20), (21,30), (31, 40), (41, 50), (51, 60), (61,70), (71,80), (81,90), (91, 101)]
-    for idx, freq_range in enumerate(ranges):
+    # we block out one MEL per experiment:
+    for freq_range in range(40):
         params['model'] = load_model(params['model'], source_model_path)
         config['freq_range'] = freq_range
         experiment.log_metric('freq_range', str(freq_range))
         test_data_loader = build_test_data_loader(config, ChillantoFreqMaskDataset , chillanto_sampler)
         evaluator = FreqEvaluator(params)
         evaluator.test_loader = test_data_loader
-        evaluator.step = idx + 1
+        evaluator.step = freq_range
         evaluator.evaluate()
