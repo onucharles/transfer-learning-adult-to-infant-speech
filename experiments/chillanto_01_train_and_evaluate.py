@@ -36,7 +36,7 @@ def build_config(seed):
     return ChillantoDataset.default_config(config)
 
 
-def train_and_evaluate(seed=3):
+def train_and_evaluate(seed=7):
     config = build_config(seed)
     set_seed(config)
     data_loaders = build_data_loaders(config, ChillantoDataset, chillanto_sampler)

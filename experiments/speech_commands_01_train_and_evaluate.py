@@ -5,7 +5,7 @@ from src.tasks.train_and_evaluate import task_train_and_evaluate, task_config, s
 
 def build_config():
     config = task_config({
-            'project': 'speech_commands_train_and_evaluate',
+            'project': 'debug-speech-commands',
             'model_path': SPEECH_COMMANDS_MODELS_FOLDER  ,
             'log_file_path': SPEECH_COMMANDS_LOGGING_FOLDER ,
             'predictions_path': SPEECH_COMMANDS_LOGGING_FOLDER ,

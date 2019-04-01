@@ -81,6 +81,7 @@ class SpeechResModel(SerializableModule):
             self.add_module("bn{}".format(i + 1), nn.BatchNorm2d(n_maps, affine=False))
             self.add_module("conv{}".format(i + 1), conv)
         self.output = nn.Linear(n_maps, n_labels)
+        nn.init.xavier_uniform_(self.output.weight, gain=nn.init.calculate_gain('relu'))
 
     def forward(self, x):
         x = x.unsqueeze(1)

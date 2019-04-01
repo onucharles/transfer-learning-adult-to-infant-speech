@@ -45,12 +45,12 @@ class ESC50Dataset(data.Dataset):
         config["train_pct"] = 60
         config["dev_pct"] = 20
         config["test_pct"] = 20
-        config["sampling_freq"] = 16000
+        config["sampling_freq"] = 8000
         config["n_dct_filters"] = 40
-        config["n_mels"] = 60
+        config["n_mels"] = 40
         # add Unknown and Silence
-        config["window_size_ms"] = 41
-        config["frame_shift_ms"] = 20
+        config["window_size_ms"] = 30
+        config["frame_shift_ms"] = 10
         config["label_limit"] = False
 
         return dict(ChainMap(custom_config, config))
