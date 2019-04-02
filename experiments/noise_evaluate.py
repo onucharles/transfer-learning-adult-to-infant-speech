@@ -43,7 +43,7 @@ def setup_task(config, n_labels):
 
 def build_config(seed):
     config = task_config({
-            'project': 'chillanto-noise',
+            'project': 'chillanto-noise-debug',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chillanto_noise' ,
             'log_file_path': CHILLANTO_LOGGING_FOLDER ,
             'predictions_path': CHILLANTO_LOGGING_FOLDER ,
@@ -73,11 +73,11 @@ def set_noise_files(noise_type):
     if noise_type == 'gaussian':
         return [ CHILLANTO_NOISE_DATA_FOLDER / 'gaussian_0_1_noise.wav' ]
     if noise_type == 'dog_bark':
-        return [ CHILLANTO_NOISE_DATA_FOLDER / 'dog_bark' / f'{fn}.wav' for fn in [4, 15, 68, 71, 97, 160, 163, 164]]
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'dog_bark' / f'{fn}.wav' for fn in [68]]
     if noise_type == 'children_playing':
-        return [ CHILLANTO_NOISE_DATA_FOLDER / 'children_playing' / f'{fn}.wav' for fn in [6, 32, 44, 54, 56, 67, 87, 134, 152, 174]]
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'children_playing' / f'{fn}.wav' for fn in [54]]
     if noise_type == 'siren':
-        return [ CHILLANTO_NOISE_DATA_FOLDER / 'siren' / f'{fn}.wav' for fn in [0, 3, 18, 27, 36, 43, 50, 60, 90, 92]]
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'siren' / f'{fn}.wav' for fn in [3]]
 
 def load_model(model, source_model_path):
     state_dict = torch.load(source_model_path, map_location='cuda:0')
@@ -90,14 +90,14 @@ def load_model(model, source_model_path):
     model.load_state_dict(desired_model_params)
     return model
 
-def noise_evaluate(noise_type, tag, source_model_path, seed=9, noise_range=[0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]):
+def noise_evaluate(noise_type, tag, source_model_path, seed=3, noise_range=[0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]):
 
     config = build_config(seed)
     config['noise_type'] = noise_type
     set_seed(config)
 
-    config['bg_noise_files']= set_noise_files(noise_type)
-    print("noise!", noise_type, config['bg_noise_files'])
+    config['noise_files']= set_noise_files(noise_type)
+    print("noise!", noise_type, config['noise_files'])
     params = setup_task(config, 4)
     experiment = params['experiment']
     experiment.add_tag(tag)

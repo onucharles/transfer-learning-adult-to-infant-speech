@@ -20,20 +20,6 @@ from .simple_cache import SimpleCache
 from .dataset_type import DatasetType
 
 
-def chillanto_sampler(train_set, config):
-    # TODO fix this turkey
-    class_prob = [0, 0, 0.76, 0.24]
-    sample_weights = []
-
-    for i in range(len(train_set)):
-        _, label = train_set[i]
-        sample_weights.append(1 / class_prob[label])
-
-    sample_weights = torch.Tensor(sample_weights)
-    sampler = torch.utils.data.sampler.WeightedRandomSampler(sample_weights, len(train_set))
-
-    return sampler
-
 class ChillantoNoiseMixDataset(data.Dataset):
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
@@ -43,12 +29,9 @@ class ChillantoNoiseMixDataset(data.Dataset):
         self.set_type = set_type
         self.audio_labels = list(data.values())
         self.input_length = config["input_length"]
-        config["bg_noise_files"] = list(filter(lambda x: str(x).endswith("wav"), config.get("bg_noise_files", [])))
-        noise_samples = [librosa.core.load(file, sr=None) for file in config["bg_noise_files"]]
-        self.bg_noise_audio = list([librosa.resample(sample, freq, config['sampling_freq']) for idx, (sample, freq) in enumerate(noise_samples)])
-        print([np.shape(x) for x in self.bg_noise_audio ])
-
-
+        sample, freq = librosa.load(config['noise_files'][0], sr=None)
+        self.bg_noise_audio = librosa.resample(sample, freq, config['sampling_freq'])
+        print(np.shape(self.bg_noise_audio))
         self.unknown_prob = config["unknown_prob"]
         self.silence_prob = config["silence_prob"]
         self.noise_prob = config["noise_prob"]
@@ -72,11 +55,11 @@ class ChillantoNoiseMixDataset(data.Dataset):
         config["group_speakers_by_id"] = True
         config["silence_prob"] = 0.
         config["noise_prob"] = 0.
+        config["unknown_prob"] = 0.
         config["input_length"] = 8000
         config["timeshift_ms"] = 100
-        config["cache_size"] =32768
+        config["cache_size"] =0
         config["seed"] = 11
-        config["unknown_prob"] = 0.
         config["train_pct"] = 80
         config["dev_pct"] = 10
         config["test_pct"] = 10
@@ -97,7 +80,7 @@ class ChillantoNoiseMixDataset(data.Dataset):
         data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
-        bg_noise = self.bg_noise_audio[0]
+        bg_noise = self.bg_noise_audio
         noise_sample = bg_noise[:in_len]
 
         # mix the noise into the data:
@@ -122,7 +105,7 @@ class ChillantoNoiseMixDataset(data.Dataset):
         words.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1})
         sets = [{}, {}, {}]
         unknowns = [0] * 3
-        bg_noise_files = config["bg_noise_files"]
+        bg_noise_files = []
         unknown_files = []
 
         for folder_name in os.listdir(folder):
@@ -195,8 +178,6 @@ class ChillantoNoiseMixDataset(data.Dataset):
         return data, labels
 
     def __getitem__(self, index):
-        if index >= len(self.audio_labels):
-            return self.preprocess(None, silence=True), 0
         return self.preprocess(self.audio_files[index]), self.audio_labels[index]
 
     def __len__(self):
