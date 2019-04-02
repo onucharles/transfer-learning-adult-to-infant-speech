@@ -7,7 +7,7 @@ import torch
 from torch.autograd import Variable
 from pathlib import Path
 from sklearn.externals import joblib
-from src.training_helpers import print_eval, set_seed, compute_eval, confusion_matrix, print_f1_confusion_matrix, calc_f1_prec_recall
+from src.training_helpers import print_eval, set_seed, compute_eval, confusion_matrix, print_f1_confusion_matrix, calc_f1_prec_recall, calc_sens_spec_uar
 
 from src.evaluator import Evaluator
 
@@ -23,3 +23,8 @@ class NoiseEvaluator(Evaluator):
             self.experiment.log_metric(f'{label}_F1', f1, step=self.noise_pct)
             self.experiment.log_metric(f'{label}_precision', precision, step=self.noise_pct)
             self.experiment.log_metric(f'{label}_recall', recall, step=self.noise_pct)
+
+            sens, spec, uar = calc_sens_spec_uar(self.conf_mat)
+            self.experiment.log_metric(f'{label}_sensitivity', sens)
+            self.experiment.log_metric(f'{label}_specificity', spec)
+            self.experiment.log_metric(f'{label}_UAR', uar)
