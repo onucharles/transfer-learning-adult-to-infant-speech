@@ -37,6 +37,7 @@ class ChillantoTimeshiftDataset(mod.SpeechDataset):
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
         end_crop = int(np.floor(in_len * self.crop ))
+        print('crop is {}. and endcrop is {}'.format(self.crop, end_crop))
         data = data[:in_len]
         data[0:end_crop] = 0
         data = preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
@@ -148,7 +149,6 @@ def noisy_eval(pipeline, config, crops = [1., 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3,
 def build_config():
     config = {
         'seed': 10,
-        #'output_folder': '/mnt/hdd/Experiments/chillanto-noise',
         'log_experiment': True,
         'input_file': '/mnt/hdd/Experiments/chillanto-svm/60f7804db83841068b559624bd4ac899/train_eval.pkl',
         }

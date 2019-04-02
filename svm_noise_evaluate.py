@@ -197,8 +197,12 @@ def build_config():
         'seed': 10,
         #'output_folder': '/mnt/hdd/Experiments/chillanto-noise',
         'log_experiment': True,
-        'noise_type': 'children_playing',
-        'input_file': '/mnt/hdd/Experiments/chillanto-svm/60f7804db83841068b559624bd4ac899/train_eval.pkl',
+        'noise_type': 'gaussian',
+        #'input_file': '/mnt/hdd/Experiments/chillanto-svm/60f7804db83841068b559624bd4ac899/train_eval.pkl',
+        #'input_file': '/mnt/hdd/Experiments/chillanto-svm/b010c7d2e9344c468418812293d375fb/train_eval.pkl',
+        #'input_file': '/mnt/hdd/Experiments/chillanto-svm/49d182d96b6d4c889642de0cec69d64b/train_eval.pkl',
+        #'input_file': '/mnt/hdd/Experiments/chillanto-svm/c1b6be9bcbc04908866a4935ece4ba9e/train_eval.pkl',
+        'input_file': '/mnt/hdd/Experiments/chillanto-svm/704543ed6f50428d8242c7bf53a84ddf/train_eval.pkl',
         }
 
     # merge above config with dataset config.
