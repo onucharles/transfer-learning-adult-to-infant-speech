@@ -58,3 +58,10 @@ def f1_prec_recall(tp,tn,fp,fn,p,n):
         return 0, 0, 0
     f1 = (2 * prec * rec) / (prec + rec)
     return f1, prec, rec
+
+def calc_sens_spec_uar(conf_mat, pos_class):
+    tp, tn, fp, fn, p, n = read_conf_matrix(conf_mat, pos_class=pos_class)
+    sens = tp / (tp + fn)
+    spec = tn / (tn + fp)
+    uar = (sens + spec) / 2
+    return sens, spec, uar
