@@ -43,7 +43,7 @@ def setup_task(config, n_labels):
 
 def build_config(seed):
     config = task_config({
-            'project': 'chillanto-noise-debug',
+            'project': 'chillanto-noise',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chillanto_noise' ,
             'log_file_path': CHILLANTO_LOGGING_FOLDER ,
             'predictions_path': CHILLANTO_LOGGING_FOLDER ,
@@ -75,7 +75,7 @@ def set_noise_files(noise_type):
     if noise_type == 'dog_bark':
         return [ CHILLANTO_NOISE_DATA_FOLDER / 'dog_bark' / f'{fn}.wav' for fn in [68]]
     if noise_type == 'children_playing':
-        return [ CHILLANTO_NOISE_DATA_FOLDER / 'children_playing' / f'{fn}.wav' for fn in [54]]
+        return [ CHILLANTO_NOISE_DATA_FOLDER / 'children_playing' / f'{fn}.wav' for fn in [152]]
     if noise_type == 'siren':
         return [ CHILLANTO_NOISE_DATA_FOLDER / 'siren' / f'{fn}.wav' for fn in [3]]
 
