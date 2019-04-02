@@ -48,6 +48,7 @@ class ChillantoNoiseMixDataset(data.Dataset):
         self.window_size_ms = config["window_size_ms"]
         self.frame_shift_ms = config["frame_shift_ms"]
         self.noise_pct = config['noise_pct']
+        self.noise_type = config['noise_type']
 
     @staticmethod
     def default_config(custom):
@@ -81,7 +82,10 @@ class ChillantoNoiseMixDataset(data.Dataset):
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
         bg_noise = self.bg_noise_audio
-        noise_sample = bg_noise[:in_len]
+        if self.noise_type == 'gaussian':
+            noise_sample = np.random.normal(0, 0.1, in_len)
+        else:
+            noise_sample = bg_noise[:in_len]
 
         # mix the noise into the data:
         noise = self.noise_pct * noise_sample
