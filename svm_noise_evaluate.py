@@ -36,19 +36,18 @@ class ChillantoNoiseMixDataset(mod.SpeechDataset):
         data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
-        bg_noise = np.random.choice(self.bg_noise_audio)
-        bg_noise = np.pad(bg_noise, (0, max(0, in_len - len(bg_noise))), "constant")
+        bg_noise = self.bg_noise_audio[0]
         noise_sample = bg_noise[:in_len]
-        # noise_range = random.randint(0, len(bg_noise) - in_len - 1)
-        # noise_sample = bg_noise[noise_range:noise_range + in_len]
+
         # mix the noise into the data:
-        data = self.noise_pct * noise_sample[:in_len] + data[:in_len]
+        noise = self.noise_pct * noise_sample
+        data = noise + data[:in_len]
 
         data = torch.from_numpy(
-            preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms,
-                             self.window_size_ms)
+            preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
         )
         return data
+
 
     @staticmethod
     def default_config():
@@ -74,10 +73,13 @@ class ChillantoNoiseMixDataset(mod.SpeechDataset):
 
 def set_noise_files(noise_type):
     if noise_type == 'gaussian':
-        return [Path('/mnt/hdd/Datasets/noise') / 'gaussian_0_1_noise.wav']
-    if noise_type == 'children_playing':
-        return [Path('/mnt/hdd/Datasets/noise') / 'children_playing' / f'{fn}.wav'
-                 for fn in [6, 32, 44, 54, 56, 67, 87, 134, 152, 174]]
+        return [ Path('/mnt/hdd/Datasets/noise') / 'gaussian_0_1_noise.wav' ]
+    elif noise_type == 'dog_bark':
+        return [ Path('/mnt/hdd/Datasets/noise') / 'dog_bark' / f'{fn}.wav' for fn in [4, 15, 68, 71, 97, 160, 163, 164]]
+    elif noise_type == 'children_playing':
+        return [ Path('/mnt/hdd/Datasets/noise') / 'children_playing' / f'{fn}.wav' for fn in [6, 32, 44, 54, 56, 67, 87, 134, 152, 174]]
+    elif noise_type == 'siren':
+        return [ Path('/mnt/hdd/Datasets/noise') / 'siren' / f'{fn}.wav' for fn in [0, 3, 18, 27, 36, 43, 50, 60, 90, 92]]
 
 def prepare_experiment(config):
     """ Sets up folders where all experiment files will be saved to.
@@ -132,10 +134,15 @@ def print_metrics_and_log(y_true, y_pred, config):
         experiment.log_metric("test_accuracy", avg_acc, step=noise_pct)
         experiment.log_metric("test_precision", precision, step=noise_pct)
         experiment.log_metric("test_recall", recall, step=noise_pct)
-        experiment.log_metric("true_positives", tp, step=noise_pct)
-        experiment.log_metric("true_negatives", tn, step=noise_pct)
-        experiment.log_metric("false_positives", fp, step=noise_pct)
-        experiment.log_metric("false_negatives", fn, step=noise_pct)
+
+        sens, spec, uar = evalutils.calc_sens_spec_uar(conf_mat, pos_class=3)
+        experiment.log_metric('test_sensitivity', sens)
+        experiment.log_metric('test_specificity', spec)
+        experiment.log_metric('test_UAR', uar)
+        # experiment.log_metric("true_positives", tp, step=noise_pct)
+        # experiment.log_metric("true_negatives", tn, step=noise_pct)
+        # experiment.log_metric("false_positives", fp, step=noise_pct)
+        # experiment.log_metric("false_negatives", fn, step=noise_pct)
 
 def noisy_eval(pipeline, config, noise_range=[0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]):
     """
