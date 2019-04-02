@@ -40,6 +40,12 @@ def calc_f1_prec_recall(conf_mat, pos_class=POS_CLASS):
     f1, precision, recall = evalutils.f1_prec_recall(tp, tn, fp, fn, p, n)
     return f1, precision, recall
 
+def calc_sens_spec_uar(conf_mat, pos_class=POS_CLASS):
+    tp, tn, fp, fn, p, n = evalutils.read_conf_matrix(conf_mat, pos_class=pos_class)
+    sens = tp / (tp + fn)
+    spec = tn / (tn + fp)
+    uar = (sens + spec) / 2
+    return sens, spec, uar
 
 def print_f1_confusion_matrix(name, avg_acc, conf_mat):
     tp, tn, fp, fn, p, n = evalutils.read_conf_matrix(conf_mat, pos_class=POS_CLASS)

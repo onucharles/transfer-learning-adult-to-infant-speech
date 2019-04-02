@@ -31,7 +31,7 @@ def build_data_loaders(config, splits):
         64), shuffle=False)
     return train, dev, test
 
-def build_config():
+def build_config(gpu_no):
     config = task_config({
             'project': 'voxceleb1_train_and_evaluate',
             'model_path': VOX_MODELS_FOLDER ,
@@ -39,25 +39,26 @@ def build_config():
             'predictions_path': VOX_LOGGING_FOLDER ,
             'data_folder': VOX_DATA_FOLDER,
             'print_confusion_matrix': False,
-            'n_epochs': 26,
-            'lr': [0.001, 0.0001],
-            'schedule': [250, 5000],
-            'batch_size': 64,
-            'weight_decay': 0.00001,
+            'n_epochs': 50,
+            'lr': [0.01, 0.0001],
+            'schedule': [2500000],
+            'batch_size': 128,
+            'weight_decay': 1e-7,
             'momentum': 0.9,
-            'label_limit': 25,
+            'label_limit': 200,
             'seed': 9,
             'model_class': 'res8',
-            'input_length': 8000,
-            'loss': 'hinge',
-            'timeshift_ms': 1000
+            'input_length': 48000,
+            'loss': 'crossent',
+            'timeshift_ms': 10000,
+            'gpu_no': gpu_no
             })
     # Merge together the model, training and dataset configuration:
     return VoxCelebOneDataset.default_config(config)
 
 
-def train_and_evaluate():
-    config = build_config()
+def train_and_evaluate(gpu_no=0):
+    config = build_config(gpu_no)
     set_seed(config)
     splits = VoxCelebOneDataset.splits(config)
     config['n_labels'] = splits['n_labels']

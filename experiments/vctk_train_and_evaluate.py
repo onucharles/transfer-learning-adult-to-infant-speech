@@ -14,11 +14,11 @@ def build_data_loaders(config, splits):
     print("dev set", len(dev_set))
     print("test set", len(test_set))
     train= data.DataLoader(train_set, num_workers=4, batch_size=config["batch_size"], shuffle=True, drop_last=True)
-    dev= data.DataLoader(dev_set,  num_workers=4, batch_size=min(len(dev_set), 16), shuffle=True)
-    test= data.DataLoader(test_set,num_workers=4,  batch_size=min(len(test_set), 16), shuffle=True)
+    dev= data.DataLoader(dev_set,  num_workers=4, batch_size=min(len(dev_set), 16), shuffle=False)
+    test= data.DataLoader(test_set,num_workers=4,  batch_size=min(len(test_set), 16), shuffle=False)
     return train, dev, test
 
-def build_config():
+def build_config(gpu_no):
     config = task_config({
             'project': 'vctk_train_and_evaluate',
             'model_path': VCTK_MODELS_FOLDER ,
@@ -26,9 +26,9 @@ def build_config():
             'predictions_path': VCTK_LOGGING_FOLDER ,
             'data_folder': VCTK_DATA_FOLDER,
             'print_confusion_matrix': False,
-            'n_epochs': 32,
+            'n_epochs': 60,
             'lr': [0.001, 0.0001],
-            'schedule': [25000],
+            'schedule': [35000],
             'batch_size': 32,
             'weight_decay': 0.000001,
             'momentum': 0.9,
@@ -36,14 +36,15 @@ def build_config():
             'seed': 9,
             'model_class': 'res8',
             'input_length': 8000,
-            'loss': 'hinge',
+            'loss': 'crossent',
+            'gpu_no': gpu_no
             })
     # Merge together the model, training and dataset configuration:
     return VCTKDataset.default_config(config)
 
 
-def train_and_evaluate():
-    config = build_config()
+def train_and_evaluate(gpu_no=0):
+    config = build_config(gpu_no)
     set_seed(config)
     splits = VCTKDataset.splits(config)
     config['n_labels'] = splits['n_labels']

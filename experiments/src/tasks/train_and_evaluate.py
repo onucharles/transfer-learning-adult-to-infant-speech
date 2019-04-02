@@ -36,6 +36,7 @@ def task_config(custom_config={}):
         'weight_decay': False,
         'model_class': MODEL_CLASS,
         'print_confusion_matrix': False,
+        'gpu_no': 0
     }
     return dict(ChainMap(custom_config, default_config))
 
@@ -43,7 +44,8 @@ def setup_task(config, data_loaders, n_labels):
     """ returns all the objects (including data loaders) for training """
     logger = CometLogger(project=config['project'])
     experiment = logger.experiment()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    gpu_name = 'cuda:{}'.format(config['gpu_no'])
+    device = torch.device(gpu_name if torch.cuda.is_available() else 'cpu')
     model = find_model(config['model_class'], n_labels)
     return {
         'experiment': experiment,
