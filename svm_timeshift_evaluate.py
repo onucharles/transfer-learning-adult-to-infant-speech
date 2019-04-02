@@ -20,32 +20,28 @@ from collections import ChainMap
 from pathlib import Path
 
 
-class ChillantoNoiseMixDataset(mod.SpeechDataset):
+class ChillantoTimeshiftDataset(mod.SpeechDataset):
     """
     SpeechDataset class that supports adding of noise before processing raw audio into MFCC.
     """
     def __init__(self, data, set_type, config):
-        super(ChillantoNoiseMixDataset, self).__init__(data, set_type, config)
-        self.noise_pct = config['noise_pct']
+        super(ChillantoTimeshiftDataset, self).__init__(data, set_type, config)
         noise_samples = [librosa.core.load(file, sr=self.input_length) for file in config["bg_noise_files"]]
         self.bg_noise_audio = list([librosa.resample(sample, freq, config['sampling_freq'])
                                     for idx, (sample, freq) in enumerate(noise_samples)])
+        self.crop = config["crop"]
 
     def preprocess(self, example, silence=False):
         in_len = self.input_length
         data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
-        bg_noise = self.bg_noise_audio[0]
-        noise_sample = bg_noise[:in_len]
+        end_crop = int(np.floor(in_len * self.crop ))
+        data = data[:in_len]
+        data[0:end_crop] = 0
+        data = preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
 
-        # mix the noise into the data:
-        noise = self.noise_pct * noise_sample
-        data = noise + data[:in_len]
-
-        data = torch.from_numpy(
-            preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
-        )
+        data = torch.from_numpy(data)
         return data
 
 
@@ -71,16 +67,6 @@ class ChillantoNoiseMixDataset(mod.SpeechDataset):
         config["cache_size"] = 32768
         return config
 
-def set_noise_files(noise_type):
-    if noise_type == 'gaussian':
-        return [ Path('/mnt/hdd/Datasets/noise') / 'gaussian_0_1_noise.wav' ]
-    elif noise_type == 'dog_bark':
-        return [ Path('/mnt/hdd/Datasets/noise') / 'dog_bark' / f'{fn}.wav' for fn in [4, 15, 68, 71, 97, 160, 163, 164]]
-    elif noise_type == 'children_playing':
-        return [ Path('/mnt/hdd/Datasets/noise') / 'children_playing' / f'{fn}.wav' for fn in [6, 32, 44, 54, 56, 67, 87, 134, 152, 174]]
-    elif noise_type == 'siren':
-        return [ Path('/mnt/hdd/Datasets/noise') / 'siren' / f'{fn}.wav' for fn in [0, 3, 18, 27, 36, 43, 50, 60, 90, 92]]
-
 def prepare_experiment(config):
     """ Sets up folders where all experiment files will be saved to.
     """
@@ -88,22 +74,8 @@ def prepare_experiment(config):
         return config
 
     experiment = Experiment(api_key="w7QuiECYXbNiOozveTpjc9uPg",
-                        project_name="chillanto-noise", workspace="co-jl-transfer")
+                        project_name="chillanto-timeshift-crop", workspace="co-jl-transfer")
     experiment.add_tag('svm')
-    # exp_id = experiment.id
-
-    # # create unique sub-folder for this experiment
-    # exp_dir = config['output_folder'] + '/' + exp_id + '/'
-    # create_folder(exp_dir)
-    # print('Experiment files will be saved to: ', exp_dir)
-    #
-    # # Specify logs directory
-    # config['exp_dir'] = exp_dir
-    #
-    # # save parameters to json file
-    # config_path = exp_dir + 'config.json'
-    # save_json(dict(config), config_path)
-    # print('Saved experiment parameters to: ', config_path)
 
     experiment.log_parameters(dict(config))
     config['experiment'] = experiment
@@ -128,58 +100,61 @@ def print_metrics_and_log(y_true, y_pred, config):
 
     # log to comet
     if config['log_experiment']:
-        noise_pct = config['noise_pct'] * 100
+        crop = int(config['crop'] * 100)
         experiment = config['experiment']
-        experiment.log_metric("test_F1", f1, step=noise_pct)
-        experiment.log_metric("test_accuracy", avg_acc, step=noise_pct)
-        experiment.log_metric("test_precision", precision, step=noise_pct)
-        experiment.log_metric("test_recall", recall, step=noise_pct)
+        experiment.log_metric("test_F1", f1, step=crop)
+        experiment.log_metric("test_accuracy", avg_acc, step=crop)
+        experiment.log_metric("test_precision", precision, step=crop)
+        experiment.log_metric("test_recall", recall, step=crop)
 
         sens, spec, uar = evalutils.calc_sens_spec_uar(conf_mat, pos_class=3)
-        experiment.log_metric('test_sensitivity', sens, step=noise_pct)
-        experiment.log_metric('test_specificity', spec, step=noise_pct)
-        experiment.log_metric('test_UAR', uar, step=noise_pct)
+        experiment.log_metric('test_sensitivity', sens, step=crop)
+        experiment.log_metric('test_specificity', spec, step=crop)
+        experiment.log_metric('test_UAR', uar, step=crop)
         # experiment.log_metric("true_positives", tp, step=noise_pct)
         # experiment.log_metric("true_negatives", tn, step=noise_pct)
         # experiment.log_metric("false_positives", fp, step=noise_pct)
         # experiment.log_metric("false_negatives", fn, step=noise_pct)
 
-def noisy_eval(pipeline, config, noise_range=[0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]):
+def noisy_eval(pipeline, config, crops = [1., 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]):
     """
     Evaluates the given model 'pipeline' on test data. adding certain amount & type of noise to the test data.
     """
     if not pipeline:
         raise("Passed SVM model is null.")
 
-    config['bg_noise_files'] = set_noise_files(config['noise_type'])
-
-    for pct in noise_range:
-        config['noise_pct'] = float(pct)
-
-        # log 'noise_pct' to comet
+    for crop in crops:
+        config['crop'] = crop
+        # log 'crop' to comet
         if config['log_experiment']:
             experiment = config['experiment']
-            experiment.log_metric('noise_pct', pct)
+            experiment.log_metric('crop', crop)
 
-        train_set, dev_set, test_set = ChillantoNoiseMixDataset.splits(config)
-        print('Loaded {0} training\t{1} validation\t{2} test examples'.format(len(train_set), len(dev_set), len(test_set)))
-        test_data, test_labels = ChillantoNoiseMixDataset.convert_dataset(test_set)
+        train_set, dev_set, test_set = ChillantoTimeshiftDataset.splits(config)
+        print('Loaded {0} training\t{1} validation\t{2} test examples'.format(len(train_set), len(dev_set),
+                                                                              len(test_set)))
+        test_data, test_labels = ChillantoTimeshiftDataset.convert_dataset(test_set)
 
         y_pred_proba = pipeline.predict_proba(test_data)
         y_pred = pipeline.predict(test_data)
         print_metrics_and_log(test_labels, y_pred, config)
+
+        # test_data_loader = build_test_data_loader(config,ChillantoTimeshiftDataset)
+        # evaluator = TimeshiftEvaluator(params)
+        # evaluator.test_loader = test_data_loader
+        # evaluator.step = int(crop * 100)
+        # evaluator.evaluate()
 
 def build_config():
     config = {
         'seed': 10,
         #'output_folder': '/mnt/hdd/Experiments/chillanto-noise',
         'log_experiment': True,
-        'noise_type': 'children_playing',
         'input_file': '/mnt/hdd/Experiments/chillanto-svm/60f7804db83841068b559624bd4ac899/train_eval.pkl',
         }
 
     # merge above config with dataset config.
-    return dict(ChainMap(ChillantoNoiseMixDataset.default_config(), config))
+    return dict(ChainMap(ChillantoTimeshiftDataset.default_config(), config))
 
 def main():
     # load parameters
