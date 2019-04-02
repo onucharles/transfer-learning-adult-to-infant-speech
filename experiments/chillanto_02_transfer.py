@@ -17,7 +17,7 @@ params_to_load = ['conv0.weight', 'bn1.running_mean', 'bn1.running_var', 'bn1.nu
                        'conv6.weight']
 
 
-def build_config(seed):
+def build_config(seed, gpu_no):
     config = task_config({
             'project': 'chillanto_interspeech',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chill_trans_sc',
@@ -45,14 +45,15 @@ def build_config(seed):
             'use_nesterov': False,
             'seed': seed,
             'cache_size':32768,
+            'gpu_no': gpu_no
             })
 
     # Merge together the model, training and dataset configuration:
     return dict(ChainMap(ChillantoDataset.default_config(config), config))
 
 
-def model_transfer(tag, source_model_path, seed=3):
-    config = build_config(seed)
+def model_transfer(tag, source_model_path, seed=3, gpu_no=0):
+    config = build_config(seed, gpu_no)
     set_seed(config)
     data_loaders = build_data_loaders(config, ChillantoDataset, chillanto_sampler)
     params = setup_task(config, data_loaders, 4)

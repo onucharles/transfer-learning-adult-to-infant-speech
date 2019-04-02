@@ -14,8 +14,8 @@ def build_config(seed):
             'lr': [0.001, 0.0001],
             'weight_decay': 0.00001,
             'momentum': 0.9,
-            'schedule': [5400],
-            'n_epochs': 32,
+            'schedule': [750],
+            'n_epochs': 50,
             'n_labels': 4,
             'silence_prob': 0.0,
             'noise_prob': 0.0,
@@ -30,6 +30,7 @@ def build_config(seed):
             'timeshift_ms': 100,
             'use_nesterov': False,
             'seed': seed,
+            'gpu_no':1
             })
 
     # Merge together the model, training and dataset configuration:

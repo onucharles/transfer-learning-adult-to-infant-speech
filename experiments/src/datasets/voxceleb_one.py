@@ -50,10 +50,9 @@ class VoxCelebOneDataset(data.Dataset):
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
         # add Unknown and Silence
-        config["window_size_ms"] = 25
+        config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
         config["label_limit"] = False
-        config["loss"] = "hinge"
 
         return dict(ChainMap(custom_config, config))
 

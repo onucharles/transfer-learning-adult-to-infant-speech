@@ -6,7 +6,7 @@ import torch
 from torch.autograd import Variable
 from pathlib import Path
 from sklearn.externals import joblib
-from src.training_helpers import print_eval, set_seed, compute_eval, confusion_matrix, print_f1_confusion_matrix, calc_f1_prec_recall
+from src.training_helpers import print_eval, set_seed, compute_eval, confusion_matrix, print_f1_confusion_matrix, calc_f1_prec_recall, calc_sens_spec_uar
 
 
 class TrainerAndEvaluator():
@@ -94,6 +94,11 @@ class TrainerAndEvaluator():
             self.experiment.log_metric(f'{label}_F1', f1)
             self.experiment.log_metric(f'{label}_precision', precision)
             self.experiment.log_metric(f'{label}_recall', recall)
+
+            sens, spec, uar = calc_sens_spec_uar(self.conf_mat)
+            self.experiment.log_metric(f'{label}_sensitivity', sens)
+            self.experiment.log_metric(f'{label}_specificity', spec)
+            self.experiment.log_metric(f'{label}_UAR', uar)
         return f1
 
     def update_confusion_matrix(self, scores, labels):
@@ -109,7 +114,9 @@ class TrainerAndEvaluator():
         if metric > self.max_eval_metric:
             print("saving best model...")
             self.max_eval_metric = metric
-            torch.save(self.model.state_dict(),f"{self.model_path}/_best.mdl")
+            best_model_path = f"{self.model_path}/_best.mdl"
+            torch.save(self.model.state_dict(), best_model_path)
+            self.experiment.log_asset(best_model_path, overwrite=True)
 
     def dump_logs_and_predictions(self, predictions):
         joblib.dump((self.train_logs, self.valid_logs), self.log_file_path)
@@ -158,6 +165,7 @@ class TrainerAndEvaluator():
         sched_idx = 0
         schedule_steps = self.config["schedule"]
         schedule_steps.append(np.inf)
+        self.experiment.log_metric("learning_rate", self.config["lr"][sched_idx], self.step_no)
         for epoch_idx in range(self.n_epochs):
             print(f"Epoch {epoch_idx}")
             self.epoch_no += 1
@@ -231,6 +239,7 @@ class TrainerAndEvaluator():
                 else:
                     self.update_eval_metric_and_save_model(val_acc)
 
+        self.experiment.log_metric('best_val', self.max_eval_metric, step=self.step_no)
         predictions = self.evaluate()
         self.dump_logs_and_predictions(predictions)
 
