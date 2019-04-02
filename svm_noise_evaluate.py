@@ -26,18 +26,41 @@ class ChillantoNoiseMixDataset(mod.SpeechDataset):
     """
     def __init__(self, data, set_type, config):
         super(ChillantoNoiseMixDataset, self).__init__(data, set_type, config)
+        self.audio_files = list(data.keys())
+        self.set_type = set_type
+        self.audio_labels = list(data.values())
+        self.input_length = config["input_length"]
+        sample, freq = librosa.load(config['noise_files'][0], sr=None)
+        self.bg_noise_audio = librosa.resample(sample, freq, config['sampling_freq'])
+        print(np.shape(self.bg_noise_audio))
+        self.unknown_prob = config["unknown_prob"]
+        self.silence_prob = config["silence_prob"]
+        self.noise_prob = config["noise_prob"]
+        self.n_dct = config["n_dct_filters"]
+        self.input_length = config["input_length"]
+        self.timeshift_ms = config["timeshift_ms"]
+        self.filters = librosa.filters.dct(config["n_dct_filters"], config["n_mels"])
+        self.n_mels = config["n_mels"]
+        n_unk = len(list(filter(lambda x: x == 1, self.audio_labels)))
+        self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
+        self.sampling_freq = config["sampling_freq"]
+        self.window_size_ms = config["window_size_ms"]
+        self.frame_shift_ms = config["frame_shift_ms"]
         self.noise_pct = config['noise_pct']
-        noise_samples = [librosa.core.load(file, sr=self.input_length) for file in config["bg_noise_files"]]
-        self.bg_noise_audio = list([librosa.resample(sample, freq, config['sampling_freq'])
-                                    for idx, (sample, freq) in enumerate(noise_samples)])
+        self.noise_type = config['noise_type']
+
+        print('noise files are: ', config['noise_files'])
 
     def preprocess(self, example, silence=False):
         in_len = self.input_length
         data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
-        bg_noise = self.bg_noise_audio[0]
-        noise_sample = bg_noise[:in_len]
+        bg_noise = self.bg_noise_audio
+        if self.noise_type == 'gaussian':
+            noise_sample = np.random.normal(0, 0.1, in_len)
+        else:
+            noise_sample = bg_noise[:in_len]
 
         # mix the noise into the data:
         noise = self.noise_pct * noise_sample
@@ -151,7 +174,7 @@ def noisy_eval(pipeline, config, noise_range=[0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 
     if not pipeline:
         raise("Passed SVM model is null.")
 
-    config['bg_noise_files'] = set_noise_files(config['noise_type'])
+    config['noise_files'] = set_noise_files(config['noise_type'])
 
     for pct in noise_range:
         config['noise_pct'] = float(pct)
