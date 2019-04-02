@@ -71,7 +71,7 @@ def build_config(seed):
     return dict(ChainMap(ChillantoTimeshiftDataset.default_config(config), config))
 
 def load_model(model, source_model_path):
-    state_dict = torch.load(source_model_path)
+    state_dict = torch.load(source_model_path, map_location='cuda:0')
     desired_model_params = {}
     for (name, val) in state_dict.items():
         # remove the module. prefix that occurs with nn.data.Parallel

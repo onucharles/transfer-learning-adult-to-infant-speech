@@ -80,7 +80,8 @@ def set_noise_files(noise_type):
         return [ CHILLANTO_NOISE_DATA_FOLDER / 'siren' / f'{fn}.wav' for fn in [0, 3, 18, 27, 36, 43, 50, 60, 90, 92]]
 
 def load_model(model, source_model_path):
-    state_dict = torch.load(source_model_path)
+    state_dict = torch.load(source_model_path, map_location='cuda:0')
+
     desired_model_params = {}
     for (name, val) in state_dict.items():
         # remove the module. prefix that occurs with nn.data.Parallel
