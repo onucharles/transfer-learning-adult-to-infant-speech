@@ -76,7 +76,7 @@ class ChillantoFreqMaskDataset(data.Dataset):
         config["train_pct"] = 80
         config["dev_pct"] = 10
         config["test_pct"] = 10
-        config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
+        config["wanted_words"] = []
         config["data_folder"] = ""#""/mnt/hdd/Datasets/speech-commands-8k-16bit"
         config["sampling_freq"] = 8000
         config["n_dct_filters"] = 40
@@ -95,9 +95,9 @@ class ChillantoFreqMaskDataset(data.Dataset):
         data = data[:in_len]
 
         data = preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
-        freq_start, freq_end = self.freq_range
-        masked = np.zeros_like(data)
-        data[freq_start:freq_end] = masked[freq_start:freq_end]
+        #data[freq_start:freq_end] = masked[freq_start:freq_end]
+        # block out MEL for the whole time:
+        data[:,self.freq_range] = np.zeros(101)
         data = torch.from_numpy(data)
         return data
 
@@ -163,7 +163,8 @@ class ChillantoFreqMaskDataset(data.Dataset):
         print("labels are: ", words)
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
-        datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg), cls(sets[1], DatasetType.DEV, test_cfg), cls(sets[2], DatasetType.TEST, test_cfg))
+        # we are only concerned with the test set for these experiments:
+        datasets = (None, None, cls(sets[2], DatasetType.TEST, test_cfg))
         return datasets
 
     @staticmethod

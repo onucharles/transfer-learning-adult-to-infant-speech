@@ -34,7 +34,7 @@ def chillanto_sampler(train_set, config):
 
     return sampler
 
-class ChillantoNoiseMixDataset(data.Dataset):
+class ChillantoTimeshiftDataset(data.Dataset):
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
     def __init__(self, data, set_type, config):
@@ -43,12 +43,6 @@ class ChillantoNoiseMixDataset(data.Dataset):
         self.set_type = set_type
         self.audio_labels = list(data.values())
         self.input_length = config["input_length"]
-        config["bg_noise_files"] = list(filter(lambda x: str(x).endswith("wav"), config.get("bg_noise_files", [])))
-        noise_samples = [librosa.core.load(file, sr=None) for file in config["bg_noise_files"]]
-        self.bg_noise_audio = list([librosa.resample(sample, freq, config['sampling_freq']) for idx, (sample, freq) in enumerate(noise_samples)])
-        print([np.shape(x) for  x in self.bg_noise_audio ])
-
-
         self.unknown_prob = config["unknown_prob"]
         self.silence_prob = config["silence_prob"]
         self.noise_prob = config["noise_prob"]
@@ -64,7 +58,8 @@ class ChillantoNoiseMixDataset(data.Dataset):
         self.sampling_freq = config["sampling_freq"]
         self.window_size_ms = config["window_size_ms"]
         self.frame_shift_ms = config["frame_shift_ms"]
-        self.noise_pct = config['noise_pct']
+
+        self.crop = config["crop"]
 
     @staticmethod
     def default_config(custom):
@@ -80,7 +75,7 @@ class ChillantoNoiseMixDataset(data.Dataset):
         config["train_pct"] = 80
         config["dev_pct"] = 10
         config["test_pct"] = 10
-        config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
+        config["wanted_words"] = []
         config["data_folder"] = ""#""/mnt/hdd/Datasets/speech-commands-8k-16bit"
         config["sampling_freq"] = 8000
         config["n_dct_filters"] = 40
@@ -88,7 +83,6 @@ class ChillantoNoiseMixDataset(data.Dataset):
         config["n_feature_maps"] = 45
         config["window_size_ms"] = 30
         config["frame_shift_ms"] = 10
-        config["noise_pct"] = 0.
         config["loss"] = "hinge"
         return ChainMap(custom,config)
 
@@ -97,22 +91,12 @@ class ChillantoNoiseMixDataset(data.Dataset):
         data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
-        # pick a random sample:
-        rand_idx = np.random.choice(len(self.bg_noise_audio))
-        bg_noise = self.bg_noise_audio[rand_idx]
+        end_crop = int(np.floor(in_len * self.crop ))
+        data = data[:in_len]
+        data[0:end_crop] = 0
+        data = preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
 
-
-        bg_noise = np.pad(bg_noise, (0, max(0, in_len - len(bg_noise))), "constant")
-        noise_range = random.randint(0, len(bg_noise) - in_len - 1)
-        noise_sample = bg_noise[noise_range:noise_range + in_len]
-
-        # mix the noise into the data:
-        noise = self.noise_pct * noise_sample[:in_len]
-        data = noise + data[:in_len]
-
-        data = torch.from_numpy(
-            preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
-        )
+        data = torch.from_numpy(data)
         return data
 
     @classmethod
@@ -128,7 +112,7 @@ class ChillantoNoiseMixDataset(data.Dataset):
         words.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1})
         sets = [{}, {}, {}]
         unknowns = [0] * 3
-        bg_noise_files = config["bg_noise_files"]
+        bg_noise_files = []
         unknown_files = []
 
         for folder_name in os.listdir(folder):
@@ -177,7 +161,7 @@ class ChillantoNoiseMixDataset(data.Dataset):
         print("labels are: ", words)
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
-        # we don't care about train and dev for evaluation of noise: 
+        # we are only concerned with the test set for these experiments:
         datasets = (None, None, cls(sets[2], DatasetType.TEST, test_cfg))
         return datasets
 

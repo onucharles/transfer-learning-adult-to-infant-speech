@@ -1,7 +1,7 @@
 from pathlib import Path
 from collections import ChainMap
 from src.settings import CHILLANTO_DATA_FOLDER, CHILLANTO_LOGGING_FOLDER, CHILLANTO_MODELS_FOLDER, CHILLANTO_NOISE_DATA_FOLDER
-from src.datasets.chillanto_freq_mask import ChillantoFreqMaskDataset, chillanto_sampler
+from src.datasets.chillanto_timeshift import ChillantoTimeshiftDataset
 from src.training_helpers import set_seed
 from collections import ChainMap
 import numpy as np
@@ -13,9 +13,9 @@ import torch
 from src.comet_logger import CometLogger
 from src.settings import MODEL_CLASS
 from src.model import find_model
-from src.freq_evaluator import FreqEvaluator
+from src.timeshift_evaluator import TimeshiftEvaluator
 
-def build_test_data_loader(config, dataset_class, sampler_func):
+def build_test_data_loader(config, dataset_class):
     train_set, dev_set, test_set = dataset_class.splits(config)
     print("test set", len(test_set))
     return data.DataLoader(test_set,  num_workers=4,batch_size=1000)
@@ -44,7 +44,7 @@ def setup_task(config, n_labels):
 
 def build_config(seed):
     config = task_config({
-            'project': 'chillanto-frequency-mask',
+            'project': 'chillanto-timeshift-crop',
             'model_path': CHILLANTO_MODELS_FOLDER / 'chillanto_freq_ablation' ,
             'log_file_path': CHILLANTO_LOGGING_FOLDER ,
             'predictions_path': CHILLANTO_LOGGING_FOLDER ,
@@ -68,7 +68,7 @@ def build_config(seed):
             })
 
     # Merge together the model, training and dataset configuration:
-    return dict(ChainMap(ChillantoFreqMaskDataset.default_config(config), config))
+    return dict(ChainMap(ChillantoTimeshiftDataset.default_config(config), config))
 
 def load_model(model, source_model_path):
     state_dict = torch.load(source_model_path)
@@ -80,19 +80,22 @@ def load_model(model, source_model_path):
     model.load_state_dict(desired_model_params)
     return model
 
-def freq_ablation_evaluate(tag, source_model_path, seed=3):
+def timeshift_evaluate(tag, source_model_path, seed=3):
     config = build_config(seed)
     set_seed(config)
     params = setup_task(config, 4)
     experiment = params['experiment']
     experiment.add_tag(tag)
     # we block out one MEL per experiment:
-    for freq_range in range(40):
+
+    crops = [1., 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+
+    for crop in crops:
         params['model'] = load_model(params['model'], source_model_path)
-        config['freq_range'] = freq_range
-        experiment.log_metric('freq_range', str(freq_range))
-        test_data_loader = build_test_data_loader(config, ChillantoFreqMaskDataset , chillanto_sampler)
-        evaluator = FreqEvaluator(params)
+        config['crop'] = crop
+        experiment.log_metric('crop', crop)
+        test_data_loader = build_test_data_loader(config,ChillantoTimeshiftDataset)
+        evaluator = TimeshiftEvaluator(params)
         evaluator.test_loader = test_data_loader
-        evaluator.step = freq_range + 1
+        evaluator.step = int(crop * 100)
         evaluator.evaluate()
