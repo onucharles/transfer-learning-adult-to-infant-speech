@@ -46,7 +46,7 @@ class ChillantoNoiseMixDataset(data.Dataset):
         config["bg_noise_files"] = list(filter(lambda x: str(x).endswith("wav"), config.get("bg_noise_files", [])))
         noise_samples = [librosa.core.load(file, sr=None) for file in config["bg_noise_files"]]
         self.bg_noise_audio = list([librosa.resample(sample, freq, config['sampling_freq']) for idx, (sample, freq) in enumerate(noise_samples)])
-        print([np.shape(x) for  x in self.bg_noise_audio ])
+        print([np.shape(x) for x in self.bg_noise_audio ])
 
 
         self.unknown_prob = config["unknown_prob"]
@@ -97,17 +97,11 @@ class ChillantoNoiseMixDataset(data.Dataset):
         data = librosa.core.load(example, sr=self.sampling_freq)[0]
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
 
-        # pick a random sample:
-        rand_idx = np.random.choice(len(self.bg_noise_audio))
-        bg_noise = self.bg_noise_audio[rand_idx]
-
-
-        bg_noise = np.pad(bg_noise, (0, max(0, in_len - len(bg_noise))), "constant")
-        noise_range = random.randint(0, len(bg_noise) - in_len - 1)
-        noise_sample = bg_noise[noise_range:noise_range + in_len]
+        bg_noise = self.bg_noise_audio[0]
+        noise_sample = bg_noise[:in_len]
 
         # mix the noise into the data:
-        noise = self.noise_pct * noise_sample[:in_len]
+        noise = self.noise_pct * noise_sample
         data = noise + data[:in_len]
 
         data = torch.from_numpy(
@@ -177,7 +171,7 @@ class ChillantoNoiseMixDataset(data.Dataset):
         print("labels are: ", words)
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
-        # we don't care about train and dev for evaluation of noise: 
+        # we don't care about train and dev for evaluation of noise:
         datasets = (None, None, cls(sets[2], DatasetType.TEST, test_cfg))
         return datasets
 
