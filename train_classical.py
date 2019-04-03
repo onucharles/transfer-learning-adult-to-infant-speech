@@ -164,7 +164,9 @@ def main():
         c_parameters,
     )
     parser = builder.build_argparse()
+    parser.add_argument("--seed", type=int)
     config = builder.config_from_argparse(parser)
+    print('seed is ', config['seed'])
 
     # prepare experiment
     config = prepare_experiment(config)
