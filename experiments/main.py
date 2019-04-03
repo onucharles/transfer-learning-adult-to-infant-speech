@@ -12,13 +12,16 @@ from sitw_train_and_evaluate import train_and_evaluate as sitw_train_eval
 from chillanto_02_transfer import model_transfer as chill_transfer
 
 # Noise Experiments
-from noise_evaluate import noise_evaluate as noise_eval
+# from noise_evaluate import noise_evaluate as noise_eval
 
 # Ablation Experiments
-from freq_ablation_evaluate import freq_ablation_evaluate as freqab_eval
+# from freq_ablation_evaluate import freq_ablation_evaluate as freqab_eval
 
 # Timeshift Experiments
-from timeshift_evaluate import timeshift_evaluate as timeshift_eval
+# from timeshift_evaluate import timeshift_evaluate as timeshift_eval
+
+# Save embeddings experiment
+from chillanto_save_embeddings import save_embeddings as save_emb
 
 # Debug Experiments
 from chillanto_sc_debug import sc_debug as sc_debug
