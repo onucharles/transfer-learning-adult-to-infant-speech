@@ -1,7 +1,7 @@
 # configuration parameters for classical models
 
 c_parameters = {
-        'mode': 'eval', # 'model_selection' or 'train_eval' or 'eval' or 'noisy_eval'
+        'mode': 'train_eval', # 'model_selection' or 'train_eval' or 'eval'
         'seed': 5,
         'log_experiment': True,
 
