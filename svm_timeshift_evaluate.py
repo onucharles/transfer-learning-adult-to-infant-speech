@@ -18,6 +18,7 @@ import librosa
 from manage_audio import preprocess_audio
 from collections import ChainMap
 from pathlib import Path
+from config.c_parameters import c_parameters
 
 
 class ChillantoTimeshiftDataset(mod.SpeechDataset):
@@ -40,6 +41,7 @@ class ChillantoTimeshiftDataset(mod.SpeechDataset):
         print('crop is {}. and endcrop is {}'.format(self.crop, end_crop))
         data = data[:in_len]
         data[0:end_crop] = 0
+        print('max val is ', np.max(data))
         data = preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
 
         data = torch.from_numpy(data)
@@ -139,6 +141,7 @@ def noisy_eval(pipeline, config, crops = [1., 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3,
         y_pred_proba = pipeline.predict_proba(test_data)
         y_pred = pipeline.predict(test_data)
         print_metrics_and_log(test_labels, y_pred, config)
+        break
 
         # test_data_loader = build_test_data_loader(config,ChillantoTimeshiftDataset)
         # evaluator = TimeshiftEvaluator(params)
@@ -147,14 +150,15 @@ def noisy_eval(pipeline, config, crops = [1., 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3,
         # evaluator.evaluate()
 
 def build_config():
-    config = {
-        'seed': 10,
-        'log_experiment': True,
-        'input_file': '/mnt/hdd/Experiments/chillanto-svm/60f7804db83841068b559624bd4ac899/train_eval.pkl',
-        }
+    # config = {
+    #     'seed': 5,
+    #     'log_experiment': True,
+    #     'input_file': '/mnt/hdd/Experiments/chillanto-svm/018e4b0f94654f508045373483b92a1f/train_eval.pkl',
+    #     }
+
 
     # merge above config with dataset config.
-    return dict(ChainMap(ChillantoTimeshiftDataset.default_config(), config))
+    return dict(ChainMap(ChillantoTimeshiftDataset.default_config(), c_parameters))
 
 def main():
     # load parameters
@@ -164,8 +168,8 @@ def main():
     config = prepare_experiment(config)
     set_seed(config['seed'])
 
-    print("Loading model from {0}...".format(config['input_file']))
-    pipeline, _, _, _ = joblib.load(config['input_file'])
+    print("Loading model from {0}...".format(config['source_model']))
+    pipeline, _, _, _ = joblib.load(config['source_model'])
     noisy_eval(pipeline, config)
 
 if __name__ == "__main__":

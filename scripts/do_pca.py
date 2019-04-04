@@ -33,6 +33,21 @@ def run_pca(embedding_names, embedding_path_list):
     # plt.title('Cumulative variance explained')
     # plt.grid()
     plt.legend(fontsize=13)
+
+    plt.figure(figsize=(6.5,4.5))
+    for emb_name, emb_path in zip(embedding_names, embedding_path_list):
+        data, labels = joblib.load(emb_path)
+        print('loaded embedding shape is {0} and labels shape is {1}'.format(data.shape, labels.shape))
+
+        # take average of embeddings.
+        data_avg = np.mean(data, axis=0)
+
+        # plot cumulative variance
+        plt.plot(range(len(data_avg)), data_avg, label=emb_name)
+    plt.xlabel('features', fontsize=13)
+    plt.ylabel('weight', fontsize=13)
+    plt.legend(fontsize=13)
+
     plt.show()
 
 def main():

@@ -4,9 +4,10 @@ c_parameters = {
         'mode': 'train_eval', # 'model_selection' or 'train_eval' or 'eval'
         #'seed': 1,
         'log_experiment': True,
+        'seed': 5,
 
         # 'mode' == 'eval' or 'noisy_eval'
-        # 'source_model': '/mnt/hdd/Experiments/chillanto-svm/704543ed6f50428d8242c7bf53a84ddf/train_eval.pkl',
+        'source_model': '/mnt/hdd/Experiments/chillanto-svm/018e4b0f94654f508045373483b92a1f/train_eval.pkl',
 
         'svm_kernel': 'rbf', # 'polynomial' or 'rbf'
 
