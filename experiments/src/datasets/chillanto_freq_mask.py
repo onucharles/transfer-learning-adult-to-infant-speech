@@ -94,9 +94,9 @@ class ChillantoFreqMaskDataset(data.Dataset):
 
         data = data[:in_len]
 
+
         data = preprocess_audio(data, self.sampling_freq, self.n_mels, self.filters, self.frame_shift_ms, self.window_size_ms)
-        #data[freq_start:freq_end] = masked[freq_start:freq_end]
-        # block out MEL for the whole time:
+        # block out MEL for the entire range specified:
         data[:,self.freq_range] = np.zeros(101)
         data = torch.from_numpy(data)
         return data

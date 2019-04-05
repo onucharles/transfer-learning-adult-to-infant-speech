@@ -118,7 +118,6 @@ class SITWDataset(data.Dataset):
         all_category_ids = ['male', 'female']
 
         categories = { 'male': male_keys, 'female': female_keys }
-
         data_distribution = [ (k, len(set(files))) for (k, files) in categories.items()]
         total = np.sum([count for (_, count) in data_distribution])
         print(f"Total files: {total}")

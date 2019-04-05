@@ -102,13 +102,13 @@ class ESC50Dataset(data.Dataset):
         }
 
 
-
+        ESC_10_CATEGORIES = (0, 1, 10, 11, 12, 20, 21, 38, 40, 41)
         all_categories = {}
         all_category_ids = []
         for path in glob.iglob(f"{folder}/*.wav"):
             path_parts = path.split('-')
-            category_id = path_parts[-2]
-            if category_id is None:
+            category_id = int(path_parts[-1].split('.wav')[0])
+            if category_id not in ESC_10_CATEGORIES:
                 continue
 
             if category_id not in all_categories:

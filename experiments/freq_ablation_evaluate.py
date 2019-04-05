@@ -94,5 +94,5 @@ def freq_ablation_evaluate(tag, source_model_path, seed=3):
         test_data_loader = build_test_data_loader(config, ChillantoFreqMaskDataset , chillanto_sampler)
         evaluator = FreqEvaluator(params)
         evaluator.test_loader = test_data_loader
-        evaluator.step = freq_range + 1
+        evaluator.step = freq_range+ 1
         evaluator.evaluate()

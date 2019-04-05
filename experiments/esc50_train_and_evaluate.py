@@ -13,7 +13,6 @@ def build_data_loaders(config, splits):
     print("training set: ", len(train_set))
     print("dev set", len(dev_set))
     print("test set", len(test_set))
-    [print(a) for a in test_set]
 
     train= data.DataLoader(train_set, num_workers=8, batch_size=config["batch_size"], shuffle=True, drop_last=True)
     dev= data.DataLoader(dev_set,  num_workers=8, batch_size=min(len(dev_set), 64), shuffle=False)
@@ -37,7 +36,7 @@ def build_config():
             'label_limit': False,
             'seed': 9,
             'model_class': 'res8',
-            'input_length': 8000,
+            'input_length': 8000 * 5, # 5 seconds
             'loss': 'crossent',
             })
     # Merge together the model, training and dataset configuration:
@@ -51,8 +50,6 @@ def train_and_evaluate():
     config['n_labels'] = splits['n_labels']
     data_loaders = build_data_loaders(config, splits)
     params = setup_task(config, data_loaders, config['n_labels'])
-    return 0
-
     # print number of parameters in model
     model, experiment = params['model'], params['experiment']
     no_of_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

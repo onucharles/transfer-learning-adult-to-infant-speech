@@ -26,9 +26,9 @@ def build_config(seed, gpu_no):
             'predictions_path': SITW_LOGGING_FOLDER ,
             'data_folder': SITW_DATA_FOLDER,
             'print_confusion_matrix': False,
-            'n_epochs': 60,
+            'n_epochs': 80,
             'lr': [0.01, 0.001, 0.0001],
-            'schedule': [1500, 3000],
+            'schedule': [1000, 3000],
             'batch_size': 32,
             'weight_decay': 0.00001,
             'momentum': 0.9,
@@ -50,8 +50,6 @@ def train_and_evaluate(seed=1, gpu_no=0):
     config['n_labels'] = splits['n_labels']
     data_loaders = build_data_loaders(config, splits)
     params = setup_task(config, data_loaders, config['n_labels'])
-    return 0
-
 
     # print number of parameters in model
     model, experiment = params['model'], params['experiment']
