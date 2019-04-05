@@ -27,7 +27,7 @@ def prepare_experiment(config):
         return config
 
     experiment = Experiment(api_key="w7QuiECYXbNiOozveTpjc9uPg",
-                        project_name="chillanto", workspace="co-jl-transfer")
+                        project_name="chillanto-svm", workspace="co-jl-transfer")
     experiment.add_tag('svm')
     exp_id = experiment.id
 
@@ -76,6 +76,11 @@ def print_metrics_and_log(y_true, y_pred, config):
         experiment.log_metric("true_negatives", tn)
         experiment.log_metric("false_positives", fp)
         experiment.log_metric("false_negatives", fn)
+
+        sens, spec, uar = evalutils.calc_sens_spec_uar(conf_mat, pos_class=3)
+        experiment.log_metric('test_sensitivity', sens)
+        experiment.log_metric('test_specificity', spec)
+        experiment.log_metric('test_UAR', uar)
 
 def cross_validate(config):
     train_set, dev_set, test_set = mod.SpeechDataset.splits(config)
@@ -159,7 +164,9 @@ def main():
         c_parameters,
     )
     parser = builder.build_argparse()
+    parser.add_argument("--seed", type=int)
     config = builder.config_from_argparse(parser)
+    print('seed is ', config['seed'])
 
     # prepare experiment
     config = prepare_experiment(config)

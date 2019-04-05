@@ -197,8 +197,12 @@ def build_config():
         'seed': 10,
         #'output_folder': '/mnt/hdd/Experiments/chillanto-noise',
         'log_experiment': True,
-        'noise_type': 'children_playing',
-        'input_file': '/mnt/hdd/Experiments/chillanto-svm/60f7804db83841068b559624bd4ac899/train_eval.pkl',
+        #'noise_type': 'children_playing',
+        #'input_file': '/mnt/hdd/Experiments/chillanto-svm/386a7ec3b7524234afad3e28864dbecf/train_eval.pkl',
+        #'input_file': '/mnt/hdd/Experiments/chillanto-svm/65ac48c462644ae08f1f8dd2c2d1fb1b/train_eval.pkl',
+        #'input_file': '/mnt/hdd/Experiments/chillanto-svm/0313b6c829cf41b489af0c76423ab813/train_eval.pkl',
+        #'input_file': '/mnt/hdd/Experiments/chillanto-svm/78716497b70449a5944596777e467d06/train_eval.pkl',
+        #'input_file': '/mnt/hdd/Experiments/chillanto-svm/b43dc83c36024ceca379fb75385b205e/train_eval.pkl',
         }
 
     # merge above config with dataset config.
@@ -207,6 +211,12 @@ def build_config():
 def main():
     # load parameters
     config = build_config()
+
+    builder = ConfigBuilder(config)
+    parser = builder.build_argparse()
+    parser.add_argument("--input_file", type=str)
+    parser.add_argument("--noise_type", type=str)
+    config = builder.config_from_argparse(parser)
 
     # prepare experiment
     config = prepare_experiment(config)

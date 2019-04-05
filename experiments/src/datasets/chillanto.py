@@ -79,7 +79,7 @@ class ChillantoDataset(data.Dataset):
         config["test_pct"] = 10
         config["wanted_words"] = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
         config["data_folder"] = ""#""/mnt/hdd/Datasets/speech-commands-8k-16bit"
-        config["sampling_freq"] = 16000
+        config["sampling_freq"] = 8000
         config["n_dct_filters"] = 40
         config["n_mels"] = 40
         config["n_feature_maps"] = 45

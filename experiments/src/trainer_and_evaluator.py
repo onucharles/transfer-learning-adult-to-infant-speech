@@ -243,3 +243,34 @@ class TrainerAndEvaluator():
         predictions = self.evaluate()
         self.dump_logs_and_predictions(predictions)
 
+    def save_embeddings(self):
+        print("Save Embeddings")
+        self.model.eval()
+        loader_names = ['train', 'val', 'test']  # order must be same as for loop below.
+        loaders = [self.train_loader, self.dev_loader, self.test_loader]
+
+        with torch.no_grad():
+            for loader_name, cur_loader in zip(loader_names, loaders):
+                embeddings_list = []
+                labels_list = []
+                print('start')
+                for model_in, labels in cur_loader:
+                    model_in = model_in.to(self.device)
+                    labels = labels.numpy()
+                    embedding = self.model.get_embedding(model_in).cpu().numpy()#.flatten()
+                    embeddings_list.append(embedding)
+                    labels_list.append(labels)
+                    print('embedding shape ', embedding.shape)
+                    print('labels shape', labels.shape)
+
+                # merge embeddings from all batches into single array.
+                embeddings = np.concatenate(embeddings_list, axis=0)
+                labels = np.concatenate(labels_list, axis=0)
+                print('embedding shape is {0} and labels shape is {1}'.format(embeddings.shape, labels.shape))
+
+                # save to file
+                file_name = 'output_embeddings_' + loader_name + '.pkl'
+                embedding_file_path = self.config['model_path'] / self.experiment.id / file_name
+                joblib.dump((embeddings, labels), embedding_file_path)
+                print('Successfully wrote ' + loader_name + ' embedding to: ' + str(embedding_file_path))
+
