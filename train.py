@@ -100,8 +100,8 @@ def prepare_experiment_directory(config):
     # if not config['log_experiment']:
     #     return
 
-    experiment = Experiment(api_key="w7QuiECYXbNiOozveTpjc9uPg",
-                        project_name="chillanto-sc-temp", workspace="co-jl-transfer")
+    experiment = Experiment(api_key=os.getenv("COMET_API_KEY"),
+                        project_name="chillanto-sc-temp", workspace=os.getenv("COMET_WORKSPACE", "co-jl-transfer"))
     # experiment.add_tag('')
     exp_id = experiment.id
 

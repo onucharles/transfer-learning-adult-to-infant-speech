@@ -74,8 +74,8 @@ def prepare_experiment(config):
     if not config['log_experiment']:
         return config
 
-    experiment = Experiment(api_key="w7QuiECYXbNiOozveTpjc9uPg",
-                        project_name="chillanto-frequency-mask", workspace="co-jl-transfer")
+    experiment = Experiment(api_key=os.getenv("COMET_API_KEY"),
+                        project_name="chillanto-frequency-mask", workspace=os.getenv("COMET_WORKSPACE", "co-jl-transfer"))
     experiment.add_tag('svm')
 
     experiment.log_parameters(dict(config))

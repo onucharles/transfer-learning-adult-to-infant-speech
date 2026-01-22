@@ -1,12 +1,12 @@
 from comet_ml import Experiment
-from .settings import COMET_API_KEY, COMET_WORKSPACE
+import os
 
 class CometLogger:
     def __init__(self, project):
         self.project = project
         self.current_experiment = Experiment(
-                api_key=COMET_API_KEY,
-                workspace=COMET_WORKSPACE,
+                api_key=os.getenv("COMET_API_KEY"),
+                workspace=os.getenv("COMET_WORKSPACE"),
                 project_name=self.project)
 
     def experiment(self):
